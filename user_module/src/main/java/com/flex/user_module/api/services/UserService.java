@@ -1,0 +1,16 @@
+package com.flex.user_module.api.services;
+
+import com.flex.user_module.api.http.requests.Register;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.ResponseEntity;
+
+/**
+ * $DESC
+ *
+ * @author Yasintha Gunathilake
+ * @since 1/13/2026
+ */
+public interface UserService {
+
+    ResponseEntity<?> register(Register register, HttpServletRequest request);
+}

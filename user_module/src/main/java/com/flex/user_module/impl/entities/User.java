@@ -1,0 +1,35 @@
+package com.flex.user_module.impl.entities;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * $DESC
+ *
+ * @author Yasintha Gunathilake
+ * @since 1/13/2026
+ */
+@Data
+@Entity
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+    private String fName;
+    private String lName;
+    private String email;
+    private String password;
+    //0-user, 1-admin, 2-customer
+    private int userType;
+    @OneToOne
+    @JoinColumn(name = "roleId")
+    private Role role;
+    private boolean deleted;
+}
