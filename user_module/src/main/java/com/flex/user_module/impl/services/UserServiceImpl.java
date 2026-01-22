@@ -131,7 +131,7 @@ public class UserServiceImpl implements UserService {
             return CONFLICT("Invalid password");
         }
 
-        if (user.getRole() == null) {
+        if (user.getUserType() != ADMIN && user.getRole() == null) {
             return CONFLICT("Invalid role");
         }
 
