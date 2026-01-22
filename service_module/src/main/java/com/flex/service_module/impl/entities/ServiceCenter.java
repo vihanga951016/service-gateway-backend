@@ -23,6 +23,9 @@ public class ServiceCenter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String name;
+    @OneToOne
+    @JoinColumn(name = "serviceProviderId")
+    private ServiceProvider serviceProvider;
     private String contact;
     private String location;
 }

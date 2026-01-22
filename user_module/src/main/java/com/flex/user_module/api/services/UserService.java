@@ -1,5 +1,6 @@
 package com.flex.user_module.api.services;
 
+import com.flex.user_module.api.http.requests.Login;
 import com.flex.user_module.api.http.requests.Register;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -13,4 +14,8 @@ import org.springframework.http.ResponseEntity;
 public interface UserService {
 
     ResponseEntity<?> register(Register register, HttpServletRequest request);
+
+    //todo create a service for customer registration - google OAuth
+
+    ResponseEntity<?> login(Login login, HttpServletRequest request);
 }

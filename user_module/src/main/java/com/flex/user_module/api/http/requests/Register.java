@@ -17,6 +17,7 @@ public class Register {
     private String provider;
     private String providerEmail;
     private String contact;
+    private boolean hasMultipleBranches;
     private String adminFName;
     private String adminLName;
     private String adminEmail;

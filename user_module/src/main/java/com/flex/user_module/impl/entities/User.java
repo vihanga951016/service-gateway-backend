@@ -1,5 +1,6 @@
 package com.flex.user_module.impl.entities;
 
+import com.flex.service_module.impl.entities.ServiceCenter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,5 +32,8 @@ public class User {
     @OneToOne
     @JoinColumn(name = "roleId")
     private Role role;
+    @OneToOne
+    @JoinColumn(name = "serviceCenterId")
+    private ServiceCenter serviceCenter;
     private boolean deleted;
 }
