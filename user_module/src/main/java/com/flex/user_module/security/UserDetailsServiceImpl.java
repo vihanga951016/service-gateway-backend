@@ -51,7 +51,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                     + Colors.YELLOW + (cashed ? "cashed" : "not cashed") + Colors.RESET);
 
             List<RolePermission> allPermissionsForDesignation = roleCacheService
-                    .getAllPermissionsForRole(user.getId(), user.getRole().getId());
+                    .cachePermissionsForUser(user.getId(), user.getRole().getId());
 
             authorities = allPermissionsForDesignation.stream()
                     .map(dp -> new SimpleGrantedAuthority(dp.getPermission().getPermission()))

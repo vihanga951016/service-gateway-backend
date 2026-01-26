@@ -8,19 +8,17 @@ import lombok.NoArgsConstructor;
  * $DESC
  *
  * @author Yasintha Gunathilake
- * @since 1/13/2026
+ * @since 1/25/2026
  */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Register {
-    private String provider;
-    private String providerEmail;
+public class EmployeeRegister {
+    private String fName;
+    private String lName;
     private String contact;
     private String nic;
-    private boolean hasMultipleBranches;
-    private String adminFName;
-    private String adminLName;
-    private String adminEmail;
-    private String adminPassword;
+    private String email;
+    private String providerId;
+    private String profileImage;
 }

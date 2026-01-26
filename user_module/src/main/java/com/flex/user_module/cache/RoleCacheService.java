@@ -32,12 +32,12 @@ public class RoleCacheService {
     private CacheManager cacheManager;
 
     @Cacheable(value = "permissions", key = "#userId")
-    public List<RolePermission> getAllPermissionsForRole(Integer userId, Integer roleId) {
+    public List<RolePermission> cachePermissionsForUser(Integer userId, Integer roleId) {
         return rolePermissionRepository.getAllRolePermissions(roleId);
     }
 
     @CacheEvict(value = "permissions", key = "#userId")
-    public void evictPermissionsCache(Integer userId, Integer designationId) {
+    public void evictPermissionsCache(Integer userId, Integer roleId) {
         // This method clears the cached permissions for the given designationId.
         // No implementation needed; the annotation handles eviction.
     }

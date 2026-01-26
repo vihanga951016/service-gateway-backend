@@ -2,6 +2,10 @@ package com.flex.user_module.impl.repositories;
 
 import com.flex.user_module.impl.entities.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 /**
  * $DESC
@@ -10,4 +14,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @since 1/13/2026
  */
 public interface PermissionRepository extends JpaRepository<Permission, Integer> {
+
+    @Query("SELECT p.permission FROM Permission p WHERE p.id in (:ids)")
+    List<String> getPermissionsByIds(@Param("ids") List<Integer> ids);
 }

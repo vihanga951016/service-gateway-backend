@@ -1,11 +1,14 @@
 package com.flex.user_module.impl.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.flex.service_module.impl.entities.ServiceCenter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.Date;
 
 /**
  * $DESC
@@ -27,6 +30,7 @@ public class User {
     private String lName;
     private String email;
     private String password;
+    private String image;
     //0-user, 1-admin, 2-customer
     private int userType;
     @OneToOne

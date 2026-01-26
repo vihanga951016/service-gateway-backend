@@ -19,6 +19,8 @@ public class ServiceProvider {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    @Column(unique = true, nullable = false, length = 8)
+    private String providerId;
     private String name;
     private String email;
     private String contact;

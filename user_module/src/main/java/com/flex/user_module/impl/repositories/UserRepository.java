@@ -13,6 +13,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     boolean existsByEmailAndDeletedIsFalse(String email);
 
+    boolean existsByIdAndDeletedIsFalse(Integer id);
+
     User findByEmailAndDeletedIsFalse(String email);
+
+    User findByIdAndDeletedIsFalse(Integer id);
 
 }

@@ -2,6 +2,7 @@ package com.flex.user_module.impl.services.helpers;
 
 import com.flex.common_module.security.impls.entities.ExpiredToken;
 import com.flex.common_module.security.impls.repositories.ExpiredTokenRepository;
+import com.flex.user_module.api.http.requests.EmployeeRegister;
 import com.flex.user_module.impl.entities.UserLogin;
 import com.flex.user_module.impl.repositories.UserLoginRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +52,29 @@ public class UserServiceHelper {
 
             userLoginRepository.saveAll(prevLoginFixes);
         }
+    }
+
+    public String employeeRegisterValidation(EmployeeRegister e) {
+        if (e.getFName() == null || e.getFName().isEmpty()) {
+            return "First name should not empty";
+        }
+
+        if (e.getLName() == null || e.getLName().isEmpty()) {
+            return "Last name should not empty";
+        }
+
+        if (e.getContact() == null || e.getContact().isEmpty()) {
+            return "Contact number should not empty";
+        }
+
+        if (e.getNic() == null || e.getNic().isEmpty()) {
+            return "NIC should not empty";
+        }
+
+        if (e.getProviderId() == null || e.getProviderId().isEmpty()) {
+            return "Provider ID should not empty";
+        }
+
+        return "success";
     }
 }

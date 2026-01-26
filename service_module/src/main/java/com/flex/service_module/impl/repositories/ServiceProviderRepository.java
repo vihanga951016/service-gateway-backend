@@ -12,4 +12,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ServiceProviderRepository extends JpaRepository<ServiceProvider, Integer> {
 
     boolean existsByNameAndEmailAndDeletedIsFalse(String name, String email);
+
+    ServiceProvider findByProviderIdAndDeletedIsFalse(String providerId);
 }

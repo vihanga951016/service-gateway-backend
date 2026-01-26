@@ -13,6 +13,7 @@ public class SecurityConstants {
             "/user/login",
             "/user/register",
             "/user/logout",
+            "/user/employee-register",
             "/actuator/**"
     };
 }
