@@ -47,7 +47,7 @@ public class UserController {
         return userService.headerData(request);
     }
 
-    @GetMapping("load-permissions")
+    @GetMapping("/load-permissions")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
     public ResponseEntity<?> loadPermissions(HttpServletRequest request) {
         return userService.permissions(request);

@@ -268,7 +268,7 @@ public class UserServiceImpl implements UserService {
         }
 
         List<Integer> permissionIds = permissions.stream().map(
-                RolePermission::getId
+                r -> r.getPermission().getId()
         ).collect(Collectors.toList());
 
         return DATA(permissionRepository.getPermissionsByIds(permissionIds));

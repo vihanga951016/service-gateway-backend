@@ -25,9 +25,7 @@ public class ReturnResponse {
             ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attrs != null) {
                 HttpServletRequest request = attrs.getRequest();
-                if (request != null) {
-                    return request.getRequestURI();
-                }
+                return request.getRequestURI();
             }
         } catch (Exception e) {
             log.warn("Unable to get request URI: {}", e.getMessage());
@@ -35,41 +33,41 @@ public class ReturnResponse {
         return "Unknown URI";
     }
 
-    public static ResponseEntity BAD_REQUEST(String message) {
+    public static ResponseEntity<?> BAD_REQUEST(String message) {
         log.warn("BAD_REQUEST for URI: {}", getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new HttpResponse<>().responseFail(message));
+                .body(new HttpResponse<>().responseFail(message, 0));
     }
 
-    public static ResponseEntity CONFLICT(String message) {
+    public static ResponseEntity<?> CONFLICT(String message) {
         log.warn("CONFLICT for URI: {}", getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new HttpResponse<>().responseFail(message));
+                .body(new HttpResponse<>().responseFail(message, 0));
     }
 
-    public static ResponseEntity SERVER_ERROR(String message) {
+    public static ResponseEntity<?> SERVER_ERROR(String message) {
         log.warn("INTERNAL_SERVER_ERROR for URI: {}", getRequestURI());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new HttpResponse<>().serverError(message));
     }
 
 
-    public static ResponseEntity SUCCESS(String message) {
-        log.info(getRequestURI() + " completed");
+    public static ResponseEntity<?> SUCCESS(String message) {
+        log.info(getRequestURI(), "{} completed");
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new HttpResponse<>().responseOk(message));
     }
 
-    public static<T> ResponseEntity DATA(T data) {
-        log.info(getRequestURI() + " completed");
+    public static<T> ResponseEntity<?> DATA(T data) {
+        log.info(getRequestURI(), "{} completed");
         return ResponseEntity.ok().body(new HttpResponse<>()
                 .responseOk(data));
     }
 
-    public static ResponseEntity UNAUTHORIZED(String message) {
+    public static ResponseEntity<?> UNAUTHORIZED(String message) {
         log.warn("UNAUTHORIZED for URI: {}", getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new HttpResponse<>().responseFail(message));
+                .body(new HttpResponse<>().responseFail(message, 0));
     }
 
     public static void FORBIDDEN(ObjectMapper objectMapper, HttpServletResponse response) throws IOException {
@@ -78,7 +76,7 @@ public class ReturnResponse {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType("application/json");
             HttpResponse<Object> body = new HttpResponse<>()
-                    .responseFail("You are not allowed to access this resource");
+                    .responseFail("You are not allowed to access this resource", 1);
 
             String json = objectMapper.writeValueAsString(body);
             response.getWriter().write(json);

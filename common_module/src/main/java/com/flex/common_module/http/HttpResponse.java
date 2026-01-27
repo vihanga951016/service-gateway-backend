@@ -19,6 +19,7 @@ import java.util.TimeZone;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class HttpResponse<T> {
+    private int code = 0;
     private String message;
     private String timestamp = Calendar.getInstance(TimeZone.getTimeZone("GMT")).getTime().toString();
     private T data;
@@ -29,7 +30,8 @@ public class HttpResponse<T> {
         return this;
     }
 
-    public HttpResponse<T> responseFail(T data) {
+    public HttpResponse<T> responseFail(T data, int code) {
+        this.code = code;
         message = "error";
         this.data = data;
         return this;
