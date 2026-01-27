@@ -17,15 +17,22 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "role_permissions")
+@Table(
+        name = "role_permissions",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"roleId", "permissionId"})
+        }
+)
 public class RolePermission {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    @OneToOne
-    @JoinColumn(name = "roleId")
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "roleId", nullable = false)
     private Role role;
-    @OneToOne
-    @JoinColumn(name = "permissionId")
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "permissionId", nullable = false)
     private Permission permission;
 }

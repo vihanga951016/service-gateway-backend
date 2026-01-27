@@ -40,26 +40,23 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        if (user.getUserType() != 1) {
-            if (user.getRole() == null) {
-                throw new MissingRoleException("User has no designation assigned");
-            }
-
-            //for check caching
-            boolean cashed = roleCacheService.isPermissionsCached(user.getId());
-            log.info("permissions of the designation " + user.getRole().getId() + " is "
-                    + Colors.YELLOW + (cashed ? "cashed" : "not cashed") + Colors.RESET);
-
-            List<RolePermission> allPermissionsForDesignation = roleCacheService
-                    .cachePermissionsForUser(user.getId(), user.getRole().getId());
-
-            authorities = allPermissionsForDesignation.stream()
-                    .map(dp -> new SimpleGrantedAuthority(dp.getPermission().getPermission()))
-                    .collect(Collectors.toList());
-
-            log.info("user permissions: " + authorities);
+        if (user.getRole() == null) {
+            throw new MissingRoleException("User has no designation assigned");
         }
 
+        //for check caching
+        boolean cashed = roleCacheService.isPermissionsCached(user.getId());
+        log.info("permissions of the designation " + user.getRole().getId() + " is "
+                + Colors.YELLOW + (cashed ? "cashed" : "not cashed") + Colors.RESET);
+
+        List<RolePermission> allPermissionsForDesignation = roleCacheService
+                .cachePermissionsForUser(user.getId(), user.getRole().getId());
+
+        authorities = allPermissionsForDesignation.stream()
+                .map(dp -> new SimpleGrantedAuthority(dp.getPermission().getPermission()))
+                .collect(Collectors.toList());
+
+        log.info("user permissions: " + authorities);
         authorities.add(new SimpleGrantedAuthority(String.valueOf(user.getUserType())));
 
         return new org.springframework.security.core.userdetails.User(

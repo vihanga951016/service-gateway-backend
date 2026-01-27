@@ -25,10 +25,7 @@ import org.apache.tomcat.util.buf.UDecoder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.flex.common_module.http.ReturnResponse.*;
@@ -75,10 +72,17 @@ public class UserServiceImpl implements UserService {
             return CONFLICT("User already registered");
         }
 
+        String providerId = UUID.randomUUID()
+                .toString()
+                .replace("-", "")
+                .substring(0, 8)
+                .toUpperCase();
+
         //create service provider entity
         ServiceProvider serviceProvider = ServiceProvider.builder()
                 .name(register.getProvider())
                 .email(register.getProviderEmail())
+                .providerId(providerId)
                 .contact(register.getContact())
                 .build();
 
@@ -99,34 +103,37 @@ public class UserServiceImpl implements UserService {
                 .serviceProvider(savedSP)
                 .build();
 
-        Role savedAdmin = roleRepository.save(admin);
-
         //create permissions for admin
         List<Permission> permissions = permissionRepository.findAll();
 
-        List<RolePermission> rolePermissions = permissions.stream().map(
-                p -> RolePermission.builder().role(savedAdmin).permission(p).build()
-        ).collect(Collectors.toList());
+        if (permissions.isEmpty()) {
+            return CONFLICT("Permissions not found");
+        }
 
-        rolePermissionRepository.saveAll(rolePermissions);
+        List<RolePermission> rolePermissions = permissions.stream().map(
+                p -> RolePermission.builder().role(admin).permission(p).build()
+        ).collect(Collectors.toList());
 
         //create user entity for admin
         User user = User.builder()
                 .fName(register.getAdminFName())
                 .lName(register.getAdminLName())
                 .email(register.getAdminEmail())
+                .role(admin)
+                .serviceProvider(serviceProvider)
                 .userType(ADMIN)
                 .password(HashUtil.hash(register.getAdminPassword()))
                 .build();
 
-        User savedUser = userRepository.save(user);
-
         UserDetails userDetails = UserDetails.builder()
-                .nic(CryptoUtil.encrypt(register.getNic())) //todo: this must be encrypted
-                .user(savedUser)
+                .nic(CryptoUtil.encrypt(register.getNic()))
+                .user(user)
                 .addedTime(new Date())
                 .build();
 
+        roleRepository.save(admin);
+        rolePermissionRepository.saveAll(rolePermissions);
+        userRepository.save(user);
         userDetailsRepository.save(userDetails);
 
         return SUCCESS("Registration Completed. Please login");
@@ -160,6 +167,7 @@ public class UserServiceImpl implements UserService {
 
         claims.put("user", user.getId());
         claims.put("type", user.getUserType());
+        claims.put("provider", user.getServiceProvider().getProviderId());
         claims.put("center", user.getServiceCenter() != null ? user.getServiceCenter().getId() : null);
 
         String token = jwtUtil.generateToken(claims, user.getEmail());
@@ -187,6 +195,10 @@ public class UserServiceImpl implements UserService {
 
         UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
 
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
         User user = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
 
         if (user == null) {
@@ -194,16 +206,22 @@ public class UserServiceImpl implements UserService {
         }
 
         userServiceHelper.logoutFromPreviousLogins(user.getId());
-        roleCacheService.evictPermissionsCache(user.getId(), user.getRole().getId());
+        roleCacheService.evictPermissionsCache(user.getId(), user.getRole().getRole());
 
         return SUCCESS("Successfully logout");
     }
 
     @Override
-    public ResponseEntity<?> headerData(Integer userId, HttpServletRequest request) {
-        log.info(request.getRequestURI(), "{} - {}", userId);
+    public ResponseEntity<?> headerData(HttpServletRequest request) {
+        log.info(request.getRequestURI());
 
-        User user = userRepository.findByIdAndDeletedIsFalse(userId);
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
 
         if (user == null) {
             return CONFLICT("User not found");
@@ -215,6 +233,7 @@ public class UserServiceImpl implements UserService {
                                 : user.getUserType() == 1 ? "ADMIN"
                                 : "CUSTOMER")
                         .email(user.getEmail())
+                        .serviceCenter(user.getRole().getServiceProvider().getName())
                         .userName(user.getFName())
                         .image(null)
                         .build()
@@ -222,10 +241,16 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ResponseEntity<?> permissions(Integer userId, HttpServletRequest request) {
-        log.info(request.getRequestURI(), "{} - {}", userId);
+    public ResponseEntity<?> permissions(HttpServletRequest request) {
+        log.info(request.getRequestURI());
 
-        User user = userRepository.findByIdAndDeletedIsFalse(userId);
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
 
         if (user == null) {
             return CONFLICT("User not found");

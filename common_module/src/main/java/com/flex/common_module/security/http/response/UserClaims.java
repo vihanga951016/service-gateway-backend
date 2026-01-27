@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 public class UserClaims {
     private String email;
     private Integer userId;
-    private Integer companyId;
-    private String role;
+    private Integer center;
+    private String provider;
+    private Integer type;
 }

@@ -20,9 +20,9 @@ public interface UserService {
 
     ResponseEntity<?> logout(HttpServletRequest request);
 
-    ResponseEntity<?> headerData(Integer userId, HttpServletRequest request);
+    ResponseEntity<?> headerData(HttpServletRequest request);
 
-    ResponseEntity<?> permissions(Integer userId, HttpServletRequest request);
+    ResponseEntity<?> permissions(HttpServletRequest request);
 
     ResponseEntity<?> employeeRegister(EmployeeRegister employeeRegister, HttpServletRequest request);
 

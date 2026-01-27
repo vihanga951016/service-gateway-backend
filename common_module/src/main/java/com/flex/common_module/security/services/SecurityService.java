@@ -31,22 +31,14 @@ public class SecurityService {
             return false;
         }
 
-        // ✅ Allow all access if SUPER_ADMIN
-        boolean isSuperAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("SUPER_ADMIN"));
-
-        if (isSuperAdmin) {
-            log.info("SUPER_ADMIN");
-            return true;
-        }
-
         // 🔐 Else check if user has any of the specified permissions
         Set<String> grantedAuthorities = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
 
         for (String required : permissions) {
-
+            log.info("permission: " + required);
+            log.info("grantedAuthorities: " + grantedAuthorities);
             if (grantedAuthorities.contains(required)) {
                 log.info("✅ Has permission");
                 return true;

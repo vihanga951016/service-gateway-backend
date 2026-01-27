@@ -41,16 +41,16 @@ public class UserController {
         return userService.logout(request);
     }
 
-    @GetMapping("/{userId}/header-data")
-    @PreAuthorize("@securityService.hasAnyAccess('permit_this')")
-    public ResponseEntity<?> headerData(@PathVariable Integer userId, HttpServletRequest request) {
-        return userService.headerData(userId, request);
+    @GetMapping("/header-data")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> headerData(HttpServletRequest request) {
+        return userService.headerData(request);
     }
 
-    @GetMapping("/{userId}/load-permissions")
-    @PreAuthorize("@securityService.hasAnyAccess('permit_this')")
-    public ResponseEntity<?> loadPermissions(@PathVariable Integer userId, HttpServletRequest request) {
-        return userService.permissions(userId, request);
+    @GetMapping("load-permissions")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> loadPermissions(HttpServletRequest request) {
+        return userService.permissions(request);
     }
 
     @PostMapping("/employee-register")

@@ -19,5 +19,6 @@ public class HeaderData {
     private String userType;
     private String email;
     private String userName;
+    private String serviceCenter;
     private String image;
 }

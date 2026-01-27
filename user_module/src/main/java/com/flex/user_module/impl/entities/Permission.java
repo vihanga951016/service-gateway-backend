@@ -23,4 +23,5 @@ public class Permission {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String permission;
+
 }

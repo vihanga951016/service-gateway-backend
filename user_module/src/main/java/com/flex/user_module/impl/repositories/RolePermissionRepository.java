@@ -18,4 +18,8 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
     @Query("SELECT r FROM RolePermission r WHERE r.role.id=:role AND r.role.deleted = false")
     List<RolePermission> getAllRolePermissions(@Param("role") Integer roleId);
 
+    @Query("SELECT r.permission.permission FROM RolePermission r " +
+            "WHERE r.role.id=:role AND r.role.deleted = false")
+    List<String> getRolePermissions(@Param("role") Integer roleId);
+
 }

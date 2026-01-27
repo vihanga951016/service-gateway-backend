@@ -85,12 +85,12 @@ public class JwtUtil {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null) {
-            log.error("no auth header found in " + request.getRequestURI());
+            log.error("no auth header found in {}" ,request.getRequestURI());
             throw new UserTokenException("Something wrong with your token");
         }
 
         if (!authHeader.startsWith("Bearer ")) {
-            log.error("no bearer with JWT in " + request.getRequestURI());
+            log.error("no bearer with JWT in {}" ,request.getRequestURI());
             throw new UserTokenException("Something missing in your token");
         }
 
@@ -104,9 +104,10 @@ public class JwtUtil {
 
         return UserClaims.builder()
                 .email(claims.getSubject())
-                .userId(claims.get("userId", Integer.class))
-                .companyId(claims.get("companyId", Integer.class))
-                .role(claims.get("role", String.class))
+                .userId(claims.get("user", Integer.class))
+                .center(claims.get("center", Integer.class))
+                .provider(claims.get("provider", String.class))
+                .type(claims.get("type", Integer.class))
                 .build();
     }
 
