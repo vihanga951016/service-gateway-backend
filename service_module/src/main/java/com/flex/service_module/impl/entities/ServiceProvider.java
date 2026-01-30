@@ -24,6 +24,11 @@ public class ServiceProvider {
     private String name;
     private String email;
     private String contact;
+    private String address;
+    private String website;
+    private String joinDate;
+    private String description;
+    private String status;
     private boolean hasMultipleCenters;
     private boolean restricted;
     private boolean deleted;

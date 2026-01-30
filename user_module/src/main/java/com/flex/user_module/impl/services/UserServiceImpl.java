@@ -15,6 +15,7 @@ import com.flex.user_module.api.http.requests.*;
 import com.flex.user_module.api.http.responses.HeaderData;
 import com.flex.user_module.api.http.responses.LoginResponse;
 import com.flex.user_module.api.http.responses.UserData;
+import com.flex.user_module.api.http.responses.UserProfileData;
 import com.flex.user_module.api.services.UserService;
 import com.flex.user_module.cache.RoleCacheService;
 import com.flex.user_module.impl.entities.*;
@@ -31,6 +32,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -507,6 +509,84 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public ResponseEntity<?> userProfileData(HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserDetails userDetails = userDetailsRepository.findByUser_id(user.getId());
+
+        return DATA(
+                UserData.builder()
+                        .userId(user.getId())
+                        .fName(user.getFName())
+                        .lName(user.getLName())
+                        .email(user.getEmail())
+                        .userType(user.getUserType())
+                        .roleId(user.getRole().getId())
+                        .serviceCenterId(user.getServiceCenter() != null ? user.getServiceCenter().getId() : null)
+                        .nic(userDetails.getNic() != null ? CryptoUtil.decrypt(userDetails.getNic()) : null)
+                        .contact(userDetails.getContact() != null ? CryptoUtil.decrypt(userDetails.getContact()) : null)
+                        .build()
+        );
+    }
+
+    @Override
+    public ResponseEntity<?> userProfileDetails(HttpServletRequest request) {
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserDetails userDetails = userDetailsRepository.findByUser_id(user.getId());
+
+        String userType;
+
+        log.info(Colors.YELLOW + user.getUserType() + Colors.RESET);
+
+        if (user.getUserType() == 1) {
+            userType = "ADMIN";
+        } else if (user.getUserType() == 2) {
+            userType = "EMPLOYEE";
+        } else {
+            userType = "USER";
+        }
+
+        log.info(Colors.YELLOW + userType + Colors.RESET);
+
+        return DATA(
+                UserProfileData.builder()
+                        .fName(user.getFName())
+                        .lName(user.getLName())
+                        .email(user.getEmail())
+                        .userType(userType)
+                        .role(user.getRole().getRole())
+                        .serviceCenter(user.getServiceCenter() != null ? user.getServiceCenter().getName() : null)
+                        .nic(userDetails.getNic() != null ? CryptoUtil.decrypt(userDetails.getNic()) : null)
+                        .contact(userDetails.getContact() != null ? CryptoUtil.decrypt(userDetails.getContact()) : null)
+                        .joinedDate(new SimpleDateFormat("MMM dd, yyyy").format(userDetails.getAddedTime()))
+                        .build()
+        );
+    }
+
+    @Override
     public ResponseEntity<?> updateUser(AddUser updateUser, HttpServletRequest request) {
         log.info(request.getRequestURI(), "{} body - {}", updateUser);
 
@@ -584,6 +664,84 @@ public class UserServiceImpl implements UserService {
         userDetailsRepository.save(existingUserDetails);
 
         return SUCCESS("Update Completed");
+    }
+
+    @Override
+    public ResponseEntity<?> updateUserProfile(AddUser updateUser, HttpServletRequest request) {
+        log.info(request.getRequestURI() + " body: " + updateUser);
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User existingUser = userRepository.findByIdAndDeletedIsFalse(userClaims.getUserId());
+
+        if (existingUser == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserDetails existingUserDetails = userDetailsRepository.findByUser_id(userClaims.getUserId());
+
+        if (updateUser.getFirstName() != null && !updateUser.getFirstName().isEmpty() &&
+                !existingUser.getFName().equals(updateUser.getFirstName())) {
+            existingUser.setFName(updateUser.getFirstName());
+        }
+
+        if (updateUser.getLastName() != null && !updateUser.getLastName().isEmpty() &&
+                !existingUser.getLName().equals(updateUser.getLastName())) {
+            existingUser.setLName(updateUser.getLastName());
+        }
+        if (updateUser.getEmail() != null && !updateUser.getEmail().isEmpty() &&
+                !existingUser.getEmail().equals(updateUser.getEmail())) {
+            existingUser.setEmail(updateUser.getEmail());
+        }
+
+        int userType = Integer.parseInt(updateUser.getUserType());
+
+        if (existingUser.getUserType() != userType) {
+            existingUser.setUserType(userType);
+        }
+
+        if (updateUser.getRoleId() != null
+                && !existingUser.getRole().getId().equals(updateUser.getRoleId())
+                && roleRepository.existsByIdAndDeletedIsFalse(updateUser.getRoleId())) {
+            existingUser.setRole(new Role(updateUser.getRoleId()));
+        }
+
+        if (existingUser.getServiceCenter() != null) {
+            if (updateUser.getServiceCenterId() != null &&
+                    !existingUser.getServiceCenter().getId().equals(updateUser.getServiceCenterId())
+                    && serviceCenterRepository.existsByIdAndDeletedIsFalse(updateUser.getServiceCenterId())) {
+                existingUser.setServiceCenter(new ServiceCenter(updateUser.getServiceCenterId()));
+            }
+        } else {
+            if (serviceCenterRepository.existsByIdAndDeletedIsFalse(updateUser.getServiceCenterId())) {
+                existingUser.setServiceCenter(new ServiceCenter(updateUser.getServiceCenterId()));
+            }
+        }
+
+        if (updateUser.getPassword() != null
+                && !updateUser.getPassword().isEmpty()
+                && !HashUtil.checkEncrypted(updateUser.getPassword(), existingUser.getPassword())) {
+            existingUser.setPassword(HashUtil.hash(updateUser.getPassword()));
+        }
+
+        if (updateUser.getNic() != null
+                && !updateUser.getNic().isEmpty()) {
+            existingUserDetails.setNic(CryptoUtil.encrypt(updateUser.getNic()));
+        }
+
+        if (updateUser.getContact() != null
+                && !updateUser.getContact().isEmpty()) {
+            existingUserDetails.setContact(CryptoUtil.encrypt(updateUser.getContact()));
+        }
+
+        userRepository.save(existingUser);
+        userDetailsRepository.save(existingUserDetails);
+
+        return SUCCESS("Profile edited");
     }
 
     @Override

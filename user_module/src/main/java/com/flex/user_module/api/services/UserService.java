@@ -33,7 +33,15 @@ public interface UserService {
 
     ResponseEntity<?> getUser(Integer userId, HttpServletRequest request);
 
+    ResponseEntity<?> userProfileData(HttpServletRequest request);
+
+    ResponseEntity<?> userProfileDetails(HttpServletRequest request);
+
     ResponseEntity<?> updateUser(AddUser addUser, HttpServletRequest request);
+
+    ResponseEntity<?> updateUserProfile(AddUser addUser, HttpServletRequest request);
+
+    //todo create upload user image
 
     ResponseEntity<?> deleteUser(Integer id, HttpServletRequest request);
 

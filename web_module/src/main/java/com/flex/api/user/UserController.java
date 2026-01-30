@@ -81,10 +81,28 @@ public class UserController {
         return userService.getUser(id, request);
     }
 
+    @GetMapping("/profile-data")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> profileData(HttpServletRequest request) {
+        return userService.userProfileData(request);
+    }
+
+    @GetMapping("/profile-details")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> profileDetails(HttpServletRequest request) {
+        return userService.userProfileDetails(request);
+    }
+
     @PostMapping("/update")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
     public ResponseEntity<?> updateUser(@RequestBody AddUser addUser, HttpServletRequest request) {
         return userService.updateUser(addUser, request);
+    }
+
+    @PostMapping("/update-profile")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> updateUserProfile(@RequestBody AddUser addUser, HttpServletRequest request) {
+        return userService.updateUserProfile(addUser, request);
     }
 
     @DeleteMapping("/{id}/delete")

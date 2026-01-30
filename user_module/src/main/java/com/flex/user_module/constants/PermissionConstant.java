@@ -7,4 +7,5 @@ public class PermissionConstant {
     public static final String RM = "Role Management";
     public static final String UM = "User Management";
     public static final String DD = "Decrypt Data";
+    public static final String SP = "Service Provider";
 }
