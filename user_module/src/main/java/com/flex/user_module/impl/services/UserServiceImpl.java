@@ -1,5 +1,8 @@
 package com.flex.user_module.impl.services;
 
+import com.flex.common_module.constants.Colors;
+import com.flex.common_module.http.pagination.Pagination;
+import com.flex.common_module.http.pagination.Sorting;
 import com.flex.common_module.security.http.response.UserClaims;
 import com.flex.common_module.security.utils.CryptoUtil;
 import com.flex.common_module.security.utils.HashUtil;
@@ -8,11 +11,10 @@ import com.flex.service_module.impl.entities.ServiceCenter;
 import com.flex.service_module.impl.entities.ServiceProvider;
 import com.flex.service_module.impl.repositories.ServiceCenterRepository;
 import com.flex.service_module.impl.repositories.ServiceProviderRepository;
-import com.flex.user_module.api.http.requests.EmployeeRegister;
-import com.flex.user_module.api.http.requests.Login;
-import com.flex.user_module.api.http.requests.Register;
+import com.flex.user_module.api.http.requests.*;
 import com.flex.user_module.api.http.responses.HeaderData;
 import com.flex.user_module.api.http.responses.LoginResponse;
+import com.flex.user_module.api.http.responses.UserData;
 import com.flex.user_module.api.services.UserService;
 import com.flex.user_module.cache.RoleCacheService;
 import com.flex.user_module.impl.entities.*;
@@ -22,10 +24,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.buf.UDecoder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.flex.common_module.http.ReturnResponse.*;
@@ -233,7 +240,8 @@ public class UserServiceImpl implements UserService {
                                 : user.getUserType() == 1 ? "ADMIN"
                                 : "CUSTOMER")
                         .email(user.getEmail())
-                        .serviceCenter(user.getRole().getServiceProvider().getName())
+                        .providerId(user.getServiceProvider().getProviderId())
+                        .serviceCenter(user.getServiceProvider().getName())
                         .userName(user.getFName())
                         .image(null)
                         .build()
@@ -325,5 +333,274 @@ public class UserServiceImpl implements UserService {
         userStatusRepository.save(userStatus);
 
         return SUCCESS("Registration Completed, Please wait to provider's confirmation.");
+    }
+
+    @Override
+    public ResponseEntity<?> getAllUsers(Pagination pagination, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider serviceProvider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (serviceProvider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        Sort sort = Sort.by(Sorting.getSort(pagination.getSort()));
+
+        Pageable pageable = PageRequest.of(
+                pagination.getPage(),
+                pagination.getSize(),
+                sort
+        );
+
+        String search = "";
+
+        if (pagination.getSpecialSearchOne() != null && !pagination.getSpecialSearchOne().isEmpty()) {
+            search = CryptoUtil.encrypt(pagination.getSpecialSearchOne());
+        } else if (pagination.getSpecialSearchTwo() != null && !pagination.getSpecialSearchTwo().isEmpty()) {
+            search = CryptoUtil.encrypt(pagination.getSpecialSearchTwo());
+        } else if (pagination.getSearchText() != null && !pagination.getSearchText().isEmpty()) {
+            search = pagination.getSearchText();
+        }
+
+        return DATA(
+                userRepository.findAllByServiceProvider(
+                        serviceProvider.getId(),
+                        search,
+                        userClaims.getUserId(),
+                        pageable
+                ).getContent()
+        );
+    }
+
+    @Override
+    public ResponseEntity<?> decryptString(DecryptValue value, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        if (!userRepository.existsByIdAndDeletedIsFalse(userClaims.getUserId())) {
+            return CONFLICT("User not found");
+        }
+
+        return DATA(CryptoUtil.decrypt(value.getKey()));
+    }
+
+    @Override
+    public ResponseEntity<?> addUser(AddUser addUser, HttpServletRequest request) {
+        log.info(request.getRequestURI(), "{} body - {}", addUser);
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider serviceProvider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (serviceProvider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        Role role = roleRepository.findByIdAndDeletedIsFalse(addUser.getRoleId());
+
+        if (role == null) {
+            return CONFLICT("Role not found");
+        }
+
+        if (userRepository.existsByEmailAndDeletedIsFalse(CryptoUtil.encrypt(addUser.getEmail()))) {
+            return CONFLICT("Email already exists");
+        }
+
+        if (userDetailsRepository.existsByContact(CryptoUtil.encrypt(addUser.getContact()))) {
+            return CONFLICT("Contact already exists");
+        }
+
+        if (userDetailsRepository.existsByNic(CryptoUtil.encrypt(addUser.getNic()))) {
+            return CONFLICT("Nic already exists");
+        }
+
+        int userType;
+
+        if (addUser.getUserType().equals("ADMIN")) {
+            userType = 1;
+        } else if (addUser.getUserType().equals("EMPLOYEE")) {
+            userType = 2;
+        } else {
+            userType = 0;
+        }
+
+        ServiceCenter serviceCenter = null;
+
+        if (addUser.getServiceCenterId() != null) {
+            serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(addUser.getServiceCenterId());
+        }
+
+        User user = User.builder()
+                .fName(addUser.getFirstName())
+                .lName(addUser.getLastName())
+                .email(addUser.getEmail())
+                .password(HashUtil.hash(addUser.getPassword()))
+                .role(role)
+                .serviceCenter(serviceCenter)
+                .serviceProvider(serviceProvider)
+                .userType(userType)
+                .build();
+
+        UserDetails userDetails = UserDetails.builder()
+                .user(user)
+                .nic(CryptoUtil.encrypt(addUser.getNic()))
+                .contact(CryptoUtil.encrypt(addUser.getContact()))
+                .addedTime(new Date())
+                .build();
+
+        UserStatus userStatus = UserStatus
+                .builder()
+                .user(user)
+                .providerApproved(true)
+                .build();
+
+        userRepository.save(user);
+        userDetailsRepository.save(userDetails);
+        userStatusRepository.save(userStatus);
+
+        return SUCCESS("Registration Completed");
+    }
+
+    @Override
+    public ResponseEntity<?> getUser(Integer userId, HttpServletRequest request) {
+        log.info(request.getRequestURI(), "{} user - {}", userId);
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userId);
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserDetails userDetails = userDetailsRepository.findByUser_id(user.getId());
+
+        return DATA(
+                UserData.builder()
+                        .userId(user.getId())
+                        .fName(user.getFName())
+                        .lName(user.getLName())
+                        .email(user.getEmail())
+                        .userType(user.getUserType())
+                        .roleId(user.getRole().getId())
+                        .serviceCenterId(user.getServiceCenter() != null ? user.getServiceCenter().getId() : null)
+                        .nic(userDetails.getNic() != null ? CryptoUtil.decrypt(userDetails.getNic()) : null)
+                        .contact(userDetails.getContact() != null ? CryptoUtil.decrypt(userDetails.getContact()) : null)
+                        .build()
+        );
+    }
+
+    @Override
+    public ResponseEntity<?> updateUser(AddUser updateUser, HttpServletRequest request) {
+        log.info(request.getRequestURI(), "{} body - {}", updateUser);
+
+        if (updateUser.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        User existingUser = userRepository.findByIdAndDeletedIsFalse(updateUser.getUserId());
+
+        UserDetails existingUserDetails = userDetailsRepository.findByUser_id(updateUser.getUserId());
+
+        if (updateUser.getFirstName() != null && !updateUser.getFirstName().isEmpty() &&
+            !existingUser.getFName().equals(updateUser.getFirstName())) {
+            existingUser.setFName(updateUser.getFirstName());
+        }
+
+        if (updateUser.getLastName() != null && !updateUser.getLastName().isEmpty() &&
+                !existingUser.getLName().equals(updateUser.getLastName())) {
+            existingUser.setLName(updateUser.getLastName());
+        }
+        if (updateUser.getEmail() != null && !updateUser.getEmail().isEmpty() &&
+                !existingUser.getEmail().equals(updateUser.getEmail())) {
+            existingUser.setEmail(updateUser.getEmail());
+        }
+
+        int userType;
+
+        if (updateUser.getUserType().equals("ADMIN")) {
+            userType = 1;
+        } else if (updateUser.getUserType().equals("EMPLOYEE")) {
+            userType = 2;
+        } else {
+            userType = 0;
+        }
+
+        if (existingUser.getUserType() != userType) {
+            existingUser.setUserType(userType);
+        }
+
+        if (updateUser.getRoleId() != null
+                && !existingUser.getRole().getId().equals(updateUser.getRoleId())
+                && roleRepository.existsByIdAndDeletedIsFalse(updateUser.getRoleId())) {
+            existingUser.setRole(new Role(updateUser.getRoleId()));
+        }
+
+        if (existingUser.getServiceCenter() != null) {
+            if (updateUser.getServiceCenterId() != null &&
+                    !existingUser.getServiceCenter().getId().equals(updateUser.getServiceCenterId())
+                    && serviceCenterRepository.existsByIdAndDeletedIsFalse(updateUser.getServiceCenterId())) {
+                existingUser.setServiceCenter(new ServiceCenter(updateUser.getServiceCenterId()));
+            }
+        } else {
+            if (serviceCenterRepository.existsByIdAndDeletedIsFalse(updateUser.getServiceCenterId())) {
+                existingUser.setServiceCenter(new ServiceCenter(updateUser.getServiceCenterId()));
+            }
+        }
+
+        if (updateUser.getPassword() != null
+                && !updateUser.getPassword().isEmpty()
+                && !HashUtil.checkEncrypted(updateUser.getPassword(), existingUser.getPassword())) {
+            existingUser.setPassword(HashUtil.hash(updateUser.getPassword()));
+        }
+
+        if (updateUser.getNic() != null
+                && !updateUser.getNic().isEmpty()) {
+            existingUserDetails.setNic(CryptoUtil.encrypt(updateUser.getNic()));
+        }
+
+        if (updateUser.getContact() != null
+                && !updateUser.getContact().isEmpty()) {
+            existingUserDetails.setContact(CryptoUtil.encrypt(updateUser.getContact()));
+        }
+
+        userRepository.save(existingUser);
+        userDetailsRepository.save(existingUserDetails);
+
+        return SUCCESS("Update Completed");
+    }
+
+    @Override
+    public ResponseEntity<?> deleteUser(Integer id, HttpServletRequest request) {
+
+        log.info(request.getRequestURI(), "{} user - {}", id);
+
+        User user = userRepository.findByIdAndDeletedIsFalse(id);
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        user.setDeleted(true);
+
+        userRepository.save(user);
+
+        return SUCCESS("Deleted User");
     }
 }

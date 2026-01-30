@@ -36,4 +36,8 @@ public class CryptoUtil {
             throw new RuntimeException("Decryption error", e);
         }
     }
+
+    public static boolean checkEquality(String candidate, String encrypted) {
+        return encrypt(candidate).equals(encrypted);
+    }
 }

@@ -12,4 +12,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserDetailsRepository extends JpaRepository<UserDetails, Integer> {
 
     UserDetails findByNic(String nic);
+
+    boolean existsByNic(String nic);
+
+    boolean existsByContact(String contact);
+
+    UserDetails findByUser_id(Integer userId);
 }

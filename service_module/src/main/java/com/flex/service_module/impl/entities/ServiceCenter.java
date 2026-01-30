@@ -28,4 +28,9 @@ public class ServiceCenter {
     private ServiceProvider serviceProvider;
     private String contact;
     private String location;
+    private boolean deleted;
+
+    public ServiceCenter(Integer id) {
+        this.id = id;
+    }
 }

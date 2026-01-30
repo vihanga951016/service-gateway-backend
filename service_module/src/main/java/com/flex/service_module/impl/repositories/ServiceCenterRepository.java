@@ -10,4 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @since 1/13/2026
  */
 public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, Integer> {
+
+    boolean existsByIdAndDeletedIsFalse(Integer id);
+
+    ServiceCenter findByIdAndDeletedIsFalse(Integer id);
 }
+

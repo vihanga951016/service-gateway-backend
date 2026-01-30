@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 public class HeaderData {
     private String userType;
     private String email;
+    private String providerId;
     private String userName;
     private String serviceCenter;
     private String image;

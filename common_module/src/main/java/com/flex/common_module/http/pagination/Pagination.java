@@ -19,4 +19,6 @@ public class Pagination {
     private int size;
     private Sorting sort;
     private String searchText;
+    private String specialSearchOne;
+    private String specialSearchTwo;
 }

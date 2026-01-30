@@ -29,4 +29,8 @@ public class Role {
     private ServiceProvider serviceProvider;
     private boolean restricted;
     private boolean deleted;
+
+    public Role(Integer id) {
+        this.id = id;
+    }
 }

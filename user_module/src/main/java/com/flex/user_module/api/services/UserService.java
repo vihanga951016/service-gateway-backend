@@ -1,8 +1,7 @@
 package com.flex.user_module.api.services;
 
-import com.flex.user_module.api.http.requests.EmployeeRegister;
-import com.flex.user_module.api.http.requests.Login;
-import com.flex.user_module.api.http.requests.Register;
+import com.flex.common_module.http.pagination.Pagination;
+import com.flex.user_module.api.http.requests.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 
@@ -25,6 +24,18 @@ public interface UserService {
     ResponseEntity<?> permissions(HttpServletRequest request);
 
     ResponseEntity<?> employeeRegister(EmployeeRegister employeeRegister, HttpServletRequest request);
+
+    ResponseEntity<?> getAllUsers(Pagination pagination, HttpServletRequest request);
+
+    ResponseEntity<?> decryptString(DecryptValue value, HttpServletRequest request);
+
+    ResponseEntity<?> addUser(AddUser addUser, HttpServletRequest request);
+
+    ResponseEntity<?> getUser(Integer userId, HttpServletRequest request);
+
+    ResponseEntity<?> updateUser(AddUser addUser, HttpServletRequest request);
+
+    ResponseEntity<?> deleteUser(Integer id, HttpServletRequest request);
 
     //todo create a service for customer registration - google OAuth
 }

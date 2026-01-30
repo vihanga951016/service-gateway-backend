@@ -18,6 +18,8 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
 
     boolean existsByRoleAndDeletedIsFalse(String name);
 
+    boolean existsByIdAndDeletedIsFalse(Integer id);
+
     Role findByIdAndDeletedIsFalse(Integer id);
 
     @Query(

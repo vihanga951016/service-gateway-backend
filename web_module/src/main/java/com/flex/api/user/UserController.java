@@ -1,9 +1,8 @@
 package com.flex.api.user;
 
 // import com.flex.user_module.api.http.requests.Login;
-import com.flex.user_module.api.http.requests.EmployeeRegister;
-import com.flex.user_module.api.http.requests.Register;
-import com.flex.user_module.api.http.requests.Login;
+import com.flex.common_module.http.pagination.Pagination;
+import com.flex.user_module.api.http.requests.*;
 import com.flex.user_module.api.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -57,4 +56,41 @@ public class UserController {
     public ResponseEntity<?> employeeRegister(@RequestBody EmployeeRegister employeeRegister, HttpServletRequest request) {
         return userService.employeeRegister(employeeRegister, request);
     }
+
+    @PostMapping("/get-all")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> getAll(@RequestBody Pagination pagination, HttpServletRequest request) {
+        return userService.getAllUsers(pagination, request);
+    }
+
+    @PostMapping("/decrypt")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).DD)")
+    public ResponseEntity<?> decrypt(@RequestBody DecryptValue value, HttpServletRequest request) {
+        return userService.decryptString(value, request);
+    }
+
+    @PostMapping("/add")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> addUser(@RequestBody AddUser addUser, HttpServletRequest request) {
+        return userService.addUser(addUser, request);
+    }
+
+    @GetMapping("/{id}/get")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> getUser(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.getUser(id, request);
+    }
+
+    @PostMapping("/update")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> updateUser(@RequestBody AddUser addUser, HttpServletRequest request) {
+        return userService.updateUser(addUser, request);
+    }
+
+    @DeleteMapping("/{id}/delete")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> deleteUser(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.deleteUser(id, request);
+    }
+
 }
