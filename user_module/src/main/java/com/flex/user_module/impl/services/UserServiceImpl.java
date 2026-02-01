@@ -81,6 +81,13 @@ public class UserServiceImpl implements UserService {
             return CONFLICT("User already registered");
         }
 
+        //create permissions for admin
+        List<Permission> permissions = permissionRepository.findAll();
+
+        if (permissions.isEmpty()) {
+            return CONFLICT("Permissions not found");
+        }
+
         String providerId = UUID.randomUUID()
                 .toString()
                 .replace("-", "")
@@ -93,6 +100,8 @@ public class UserServiceImpl implements UserService {
                 .email(register.getProviderEmail())
                 .providerId(providerId)
                 .contact(register.getContact())
+                .addedTime(new Date())
+                .active(true)
                 .build();
 
         ServiceProvider savedSP = serviceProviderRepository.save(serviceProvider);
@@ -111,13 +120,6 @@ public class UserServiceImpl implements UserService {
                 role("Admin")
                 .serviceProvider(savedSP)
                 .build();
-
-        //create permissions for admin
-        List<Permission> permissions = permissionRepository.findAll();
-
-        if (permissions.isEmpty()) {
-            return CONFLICT("Permissions not found");
-        }
 
         List<RolePermission> rolePermissions = permissions.stream().map(
                 p -> RolePermission.builder().role(admin).permission(p).build()
@@ -340,6 +342,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public ResponseEntity<?> getAllUsers(Pagination pagination, HttpServletRequest request) {
         log.info(request.getRequestURI());
+        log.info(Colors.YELLOW + pagination + Colors.RESET);
 
         UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
 
@@ -463,8 +466,10 @@ public class UserServiceImpl implements UserService {
 
         UserDetails userDetails = UserDetails.builder()
                 .user(user)
-                .nic(CryptoUtil.encrypt(addUser.getNic()))
-                .contact(CryptoUtil.encrypt(addUser.getContact()))
+                .nic(addUser.getNic() != null && !addUser.getNic().isEmpty()
+                        ? CryptoUtil.encrypt(addUser.getNic()) : null)
+                .contact(addUser.getNic() != null && !addUser.getNic().isEmpty()
+                        ? CryptoUtil.encrypt(addUser.getContact()) : null)
                 .addedTime(new Date())
                 .build();
 
@@ -480,7 +485,7 @@ public class UserServiceImpl implements UserService {
 
         return SUCCESS("Registration Completed");
     }
-
+    
     @Override
     public ResponseEntity<?> getUser(Integer userId, HttpServletRequest request) {
         log.info(request.getRequestURI(), "{} user - {}", userId);

@@ -1,7 +1,10 @@
 package com.flex.service_module.impl.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.Date;
 
 /**
  * $DESC
@@ -26,9 +29,11 @@ public class ServiceProvider {
     private String contact;
     private String address;
     private String website;
-    private String joinDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Colombo")
+    @Column(columnDefinition = "TIMESTAMP default CURRENT_TIMESTAMP")
+    private Date addedTime;
     private String description;
-    private String status;
+    private boolean active;
     private boolean hasMultipleCenters;
     private boolean restricted;
     private boolean deleted;

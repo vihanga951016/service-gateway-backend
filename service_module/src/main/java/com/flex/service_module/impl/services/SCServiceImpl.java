@@ -1,0 +1,227 @@
+package com.flex.service_module.impl.services;
+
+import com.flex.common_module.http.pagination.Pagination;
+import com.flex.common_module.http.pagination.Sorting;
+import com.flex.common_module.security.http.response.UserClaims;
+import com.flex.common_module.security.utils.JwtUtil;
+import com.flex.service_module.api.http.DTO.classes.ServiceCenterViewDTO;
+import com.flex.service_module.api.services.SCService;
+import com.flex.service_module.impl.entities.ServiceCenter;
+import com.flex.service_module.impl.entities.ServiceProvider;
+import com.flex.service_module.impl.repositories.ServiceCenterRepository;
+import com.flex.service_module.impl.repositories.ServiceProviderRepository;
+import com.flex.service_module.impl.services.helpers.SCServiceHelper;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalTime;
+import java.util.Date;
+
+import static com.flex.common_module.http.ReturnResponse.*;
+
+/**
+ * $DESC
+ *
+ * @author Yasintha Gunathilake
+ * @since 2/1/2026
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@SuppressWarnings("Duplicates")
+public class SCServiceImpl implements SCService {
+
+    private final SCServiceHelper sCServiceHelper;
+
+    private final ServiceCenterRepository serviceCenterRepository;
+    private final ServiceProviderRepository serviceProviderRepository;
+
+    @Override
+    public ResponseEntity<?> addNewCenter(ServiceCenter serviceCenter, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        if (serviceCenterRepository.existsByNameAndServiceProvider_IdAndDeletedIsFalse(
+                serviceCenter.getName(), provider.getId()
+        )) {
+            return CONFLICT("Service center already created");
+        }
+
+        String status = sCServiceHelper.validateServiceCenter(serviceCenter);
+
+        if (!status.equals("fine")) {
+            return CONFLICT(status);
+        }
+
+        serviceCenter.setAddedTime(new Date());
+        serviceCenter.setServiceProvider(provider);
+
+        serviceCenterRepository.save(serviceCenter);
+
+        return SUCCESS("Service center created");
+    }
+
+    @Override
+    public ResponseEntity<?> updateCenter(ServiceCenter serviceCenter, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (serviceCenter.getId() == null) {
+            return CONFLICT("Can not update this record");
+        }
+
+        ServiceCenter existing = serviceCenterRepository.findByIdAndDeletedIsFalse(
+                serviceCenter.getId()
+        );
+
+        if (existing == null) {
+            return CONFLICT("Service center not found");
+        }
+
+        if (serviceCenter.getName() != null && !serviceCenter.getName().isEmpty() && serviceCenterRepository.existsByNameIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(
+                serviceCenter.getName(), existing.getServiceProvider().getId(), existing.getId()
+        )) {
+            return CONFLICT("Name is already exist");
+        }
+
+        if (serviceCenter.getContact() != null && !serviceCenter.getContact().isEmpty() && serviceCenterRepository.existsByContactIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(
+                serviceCenter.getContact(), existing.getServiceProvider().getId(), existing.getId()
+        )) {
+            return CONFLICT("Contact is already exist");
+        }
+
+        if (serviceCenter.getName() != null && !serviceCenter.getName().isEmpty()
+                && !existing.getName().equals(serviceCenter.getName())) {
+            existing.setName(serviceCenter.getName());
+        }
+
+        if (serviceCenter.getContact() != null && !serviceCenter.getContact().isEmpty()
+                && !existing.getContact().equals(serviceCenter.getContact())) {
+            existing.setContact(serviceCenter.getContact());
+        }
+
+        if (serviceCenter.getLocation() != null
+                && !serviceCenter.getLocation().isEmpty()
+                && !existing.getLocation().equals(serviceCenter.getLocation())) {
+            existing.setLocation(serviceCenter.getLocation());
+        }
+
+        if (serviceCenter.getOpenTime() != null
+                && !existing.getOpenTime().equals(serviceCenter.getOpenTime())) {
+            existing.setOpenTime(serviceCenter.getOpenTime());
+        }
+
+        if (serviceCenter.getCloseTime() != null
+                && !existing.getCloseTime().equals(serviceCenter.getCloseTime())) {
+            existing.setCloseTime(serviceCenter.getCloseTime());
+        }
+
+        serviceCenterRepository.save(existing);
+
+        return SUCCESS("Service center updated");
+    }
+
+    @Override
+    public ResponseEntity<?> getAllCenters(Pagination pagination, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        Sort sort = Sort.by(Sorting.getSort(pagination.getSort()));
+
+        Pageable pageable = PageRequest.of(
+                pagination.getPage(),
+                pagination.getSize(),
+                sort
+        );
+
+        Page<ServiceCenter> result;
+
+        if (pagination.getSearchText() == null || pagination.getSearchText().trim().isEmpty()) {
+            result = serviceCenterRepository
+                    .findByServiceProvider_IdAndDeletedFalse(provider.getId(), pageable);
+        } else {
+            result = serviceCenterRepository
+                    .searchCenters(provider.getId(), pagination.getSearchText().trim(), pageable);
+        }
+
+        return DATA(
+                result.map(sc -> ServiceCenterViewDTO.builder()
+                        .id(sc.getId())
+                        .name(sc.getName())
+                        .location(sc.getLocation())
+                        .contact(sc.getContact())
+                        .openTime(sc.getOpenTime())
+                        .closeTime(sc.getCloseTime())
+                        .fOpenTime(sCServiceHelper.formatTimeRange(sc.getOpenTime()))
+                        .fCloseTime(sCServiceHelper.formatTimeRange(sc.getCloseTime()))
+                        .build())
+        );
+    }
+
+    @Override
+    public ResponseEntity<?> getAllCenters(HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        return DATA(serviceCenterRepository.findCentersWithStatus(provider.getId(), LocalTime.now()));
+    }
+
+    @Override
+    public ResponseEntity<?> deleteCenter(Integer id, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(id);
+
+        if (serviceCenter == null) {
+            return CONFLICT("Service center not found");
+        }
+
+        serviceCenter.setDeleted(true);
+
+        serviceCenterRepository.save(serviceCenter);
+
+        return SUCCESS("Service center deleted");
+    }
+}
