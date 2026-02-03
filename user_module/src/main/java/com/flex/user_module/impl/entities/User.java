@@ -40,7 +40,7 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "service_provider_id")
     private ServiceProvider serviceProvider;
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "service_center_id")
     private ServiceCenter serviceCenter;
     private boolean deleted;

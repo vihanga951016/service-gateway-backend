@@ -1,5 +1,7 @@
 package com.flex.user_module.impl.repositories;
 
+import com.flex.user_module.api.DTO.CenterUsers;
+import com.flex.user_module.api.DTO.UserDropdown;
 import com.flex.user_module.api.DTO.UsersList;
 import com.flex.user_module.impl.entities.User;
 import org.springframework.data.domain.Page;
@@ -7,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 /**
  * $DESC
@@ -23,6 +27,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     User findByEmailAndDeletedIsFalse(String email);
 
     User findByIdAndDeletedIsFalse(Integer id);
+
+    List<User> findAllByIdInAndDeletedIsFalse(List<Integer> ids);
 
     @Query(
             "SELECT " +
@@ -42,6 +48,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
                     " LEFT JOIN u.role r " +
                     " LEFT JOIN u.serviceCenter sc " +
                     "WHERE u.deleted = false AND u.id <> :userId " +
+                    " AND u.userType <> 1 " +
                     " AND u.serviceProvider.id = :serviceProviderId " +
                     " AND ( " +
                     "   LOWER(u.fName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -58,6 +65,28 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             Pageable pageable
     );
 
+    @Query(
+            value =
+                    "SELECT " +
+                            " u.id AS userId, " +
+                            " CONCAT(u.f_name, ' ', u.l_name) AS userName, " +
+                            " ud.contact AS contact, " +
+                            " u.email AS email, " +
+                            " r.role AS role " +
+                            "FROM users u " +
+                            "LEFT JOIN user_details ud ON u.id = ud.user_id " +
+                            "LEFT JOIN roles r ON u.role_id = r.id " +
+                            "WHERE u.service_center_id = :id " +
+                            "AND u.deleted = false",
+            nativeQuery = true
+    )
+    List<CenterUsers> findUsersByServiceCenter(
+            @Param("id") Integer id
+    );
 
-
+    @Query("SELECT u.id as id, CONCAT(u.fName, ' ', u.lName) AS name FROM User u " +
+            "WHERE u.serviceProvider.id=:providerId AND (u.serviceCenter is null OR u.serviceCenter.id <> :centerId) " +
+            "AND u.userType <> 1 AND u.deleted is false")
+    List<UserDropdown> getNonAssignedUsers(@Param("providerId") Integer serviceProviderId,
+                                           @Param("centerId") Integer serviceCenterId);
 }

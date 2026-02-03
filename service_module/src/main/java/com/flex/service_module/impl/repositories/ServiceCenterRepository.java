@@ -1,6 +1,8 @@
 package com.flex.service_module.impl.repositories;
 
 import com.flex.service_module.api.http.DTO.ServiceCenterStatusView;
+import com.flex.service_module.api.http.DTO.ServiceCentersDropdown;
+import com.flex.service_module.api.http.DTO.classes.ServiceCenterViewDTO;
 import com.flex.service_module.impl.entities.ServiceCenter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,9 +25,9 @@ public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, In
 
     boolean existsByNameAndServiceProvider_IdAndDeletedIsFalse(String name, Integer SPId);
 
-    boolean existsByNameIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(String name, Integer SPId, Integer id);
+    boolean existsByNameAndIdNotAndDeletedIsFalse(String name, Integer id);
 
-    boolean existsByContactIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(String contact, Integer SPId, Integer id);
+    boolean existsByContactAndIdNotAndDeletedIsFalse(String contact, Integer id);
 
     ServiceCenter findByIdAndDeletedIsFalse(Integer id);
 
@@ -64,5 +66,17 @@ public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, In
             @Param("time") LocalTime time
     );
 
+    @Query(
+            value = "SELECT c.id AS id, " +
+                    "c.name AS name, " +
+                    "c.location AS location " +
+                    "FROM service_centers c " +
+                    "WHERE c.service_provider_id = :providerId " +
+                    "AND c.deleted = false",
+            nativeQuery = true
+    )
+    List<ServiceCentersDropdown> findCentersForDropdown(
+            @Param("providerId") Integer providerId
+    );
 }
 

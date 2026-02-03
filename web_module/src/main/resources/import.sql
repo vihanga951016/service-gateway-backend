@@ -4,3 +4,6 @@ insert into permissions(permission) value ('User Management');
 insert into permissions(permission) value ('Decrypt Data');
 insert into permissions(permission) value ('Service Provider');
 insert into permissions(permission) value ('Centers Management');
+insert into permissions(permission) value ('Services Management');
+insert into permissions(permission) value ('Center Employee M.');
+insert into permissions(permission) value ('Points Management');

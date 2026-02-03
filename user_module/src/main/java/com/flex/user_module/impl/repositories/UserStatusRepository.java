@@ -10,4 +10,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @since 1/25/2026
  */
 public interface UserStatusRepository extends JpaRepository<UserStatus, Integer> {
+    UserStatus findByUserIdAndProviderApprovedIsFalse(Integer userId);
 }

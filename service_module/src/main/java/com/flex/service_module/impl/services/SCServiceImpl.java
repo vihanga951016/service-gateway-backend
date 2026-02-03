@@ -96,25 +96,19 @@ public class SCServiceImpl implements SCService {
             return CONFLICT("Service center not found");
         }
 
-        if (serviceCenter.getName() != null && !serviceCenter.getName().isEmpty() && serviceCenterRepository.existsByNameIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(
-                serviceCenter.getName(), existing.getServiceProvider().getId(), existing.getId()
-        )) {
-            return CONFLICT("Name is already exist");
-        }
-
-        if (serviceCenter.getContact() != null && !serviceCenter.getContact().isEmpty() && serviceCenterRepository.existsByContactIgnoreCaseAndServiceProvider_IdAndDeletedIsFalseAndIdNot(
-                serviceCenter.getContact(), existing.getServiceProvider().getId(), existing.getId()
-        )) {
-            return CONFLICT("Contact is already exist");
-        }
-
         if (serviceCenter.getName() != null && !serviceCenter.getName().isEmpty()
                 && !existing.getName().equals(serviceCenter.getName())) {
+            if (serviceCenterRepository.existsByNameAndIdNotAndDeletedIsFalse(serviceCenter.getName(), existing.getId())) {
+                return CONFLICT("Service center already exists by this name");
+            }
             existing.setName(serviceCenter.getName());
         }
 
         if (serviceCenter.getContact() != null && !serviceCenter.getContact().isEmpty()
                 && !existing.getContact().equals(serviceCenter.getContact())) {
+            if (serviceCenterRepository.existsByContactAndIdNotAndDeletedIsFalse(serviceCenter.getContact(), existing.getId())) {
+                return CONFLICT("This contact already exists");
+            }
             existing.setContact(serviceCenter.getContact());
         }
 
@@ -206,6 +200,46 @@ public class SCServiceImpl implements SCService {
         }
 
         return DATA(serviceCenterRepository.findCentersWithStatus(provider.getId(), LocalTime.now()));
+    }
+
+    @Override
+    public ResponseEntity<?> getCenter(Integer id, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(id);
+
+        if (serviceCenter == null) {
+            return CONFLICT("Service center not found");
+        }
+
+        return DATA(ServiceCenterViewDTO.builder()
+                .id(serviceCenter.getId())
+                .name(serviceCenter.getName())
+                .location(serviceCenter.getLocation())
+                .contact(serviceCenter.getContact())
+                .fOpenTime(sCServiceHelper.formatTimeRange(serviceCenter.getOpenTime()))
+                .fCloseTime(sCServiceHelper.formatTimeRange(serviceCenter.getCloseTime()))
+                .build());
+    }
+
+    @Override
+    public ResponseEntity<?> getAllForDropdown(HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        return DATA(serviceCenterRepository.findCentersForDropdown(provider.getId()));
     }
 
     @Override

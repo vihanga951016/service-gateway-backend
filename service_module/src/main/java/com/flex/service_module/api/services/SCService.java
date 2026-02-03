@@ -21,5 +21,9 @@ public interface SCService {
 
     ResponseEntity<?> getAllCenters(HttpServletRequest request);
 
+    ResponseEntity<?> getCenter(Integer id, HttpServletRequest request);
+
+    ResponseEntity<?> getAllForDropdown(HttpServletRequest request);
+
     ResponseEntity<?> deleteCenter(Integer id, HttpServletRequest request);
 }

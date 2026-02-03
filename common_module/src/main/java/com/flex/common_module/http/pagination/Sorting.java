@@ -1,5 +1,7 @@
 package com.flex.common_module.http.pagination;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +17,9 @@ import org.springframework.data.domain.Sort;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Sorting {
+    @JsonAlias({"column", "property"})
     private String name;
+    @JsonAlias({"direction", "order"})
     private String direction;
 
     public static Sort.Order getSort(Sorting sorting) {

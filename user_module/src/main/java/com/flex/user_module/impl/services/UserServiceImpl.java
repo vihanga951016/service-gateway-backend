@@ -11,6 +11,7 @@ import com.flex.service_module.impl.entities.ServiceCenter;
 import com.flex.service_module.impl.entities.ServiceProvider;
 import com.flex.service_module.impl.repositories.ServiceCenterRepository;
 import com.flex.service_module.impl.repositories.ServiceProviderRepository;
+import com.flex.user_module.api.DTO.CenterUsers;
 import com.flex.user_module.api.http.requests.*;
 import com.flex.user_module.api.http.responses.HeaderData;
 import com.flex.user_module.api.http.responses.LoginResponse;
@@ -342,7 +343,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public ResponseEntity<?> getAllUsers(Pagination pagination, HttpServletRequest request) {
         log.info(request.getRequestURI());
-        log.info(Colors.YELLOW + pagination + Colors.RESET);
 
         UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
 
@@ -383,6 +383,48 @@ public class UserServiceImpl implements UserService {
                         pageable
                 ).getContent()
         );
+    }
+
+    @Override
+    public ResponseEntity<?> employeeAssign(Integer id, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        User user = userRepository.findByIdAndDeletedIsFalse(id);
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserStatus pendingUsers = userStatusRepository.findByUserIdAndProviderApprovedIsFalse(id);
+
+        if (pendingUsers == null) {
+            return CONFLICT("This user is already approved");
+        }
+
+        pendingUsers.setProviderApproved(true);
+
+        userStatusRepository.save(pendingUsers);
+
+        return SUCCESS("User has approved");
+    }
+
+    @Override
+    public ResponseEntity<?> employeeReject(Integer id, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        User user = userRepository.findByIdAndDeletedIsFalse(id);
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        UserStatus pendingUsers = userStatusRepository.findByUserIdAndProviderApprovedIsFalse(id);
+
+        pendingUsers.setProviderApproved(false);
+
+        userStatusRepository.save(pendingUsers);
+
+        return SUCCESS("User has rejected");
     }
 
     @Override
@@ -765,5 +807,90 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         return SUCCESS("Deleted User");
+    }
+
+    @Override
+    public ResponseEntity<?> assignEmployeesToCenters(EmployeeAssign employeeAssign, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        User user = userRepository.findByIdAndDeletedIsFalse(employeeAssign.getEmployeeId());
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(employeeAssign.getCenterId());
+
+        if (serviceCenter == null) {
+            return CONFLICT("ServiceCenter not found");
+        }
+
+        user.setServiceCenter(serviceCenter);
+
+        userRepository.save(user);
+
+        return SUCCESS("Employee assigned");
+    }
+
+    @Override
+    public ResponseEntity<?> usersByCenter(Integer centerId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(centerId);
+
+        if (serviceCenter == null) {
+            return CONFLICT("ServiceCenter not found");
+        }
+
+        List<CenterUsers> centerUsers = userRepository.findUsersByServiceCenter(centerId);
+
+        List<com.flex.user_module.api.http.responses.CenterUsers> centerUsersList = centerUsers.stream().map(
+                u -> com.flex.user_module.api.http.responses.CenterUsers.builder()
+                        .userId(u.getUserId())
+                        .userName(u.getUserName())
+                        .contact(CryptoUtil.decrypt(u.getContact()))
+                        .email(u.getEmail())
+                        .role(u.getRole())
+                        .build()
+        ).toList();
+
+        return DATA(centerUsersList);
+    }
+
+    @Override
+    public ResponseEntity<?> nonAssignedUsers(Integer centerId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider serviceProvider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (serviceProvider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        return DATA(userRepository.getNonAssignedUsers(serviceProvider.getId(), centerId));
+    }
+
+    @Override
+    public ResponseEntity<?> removeUserFromCenter(Integer userId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        User user = userRepository.findByIdAndDeletedIsFalse(userId);
+
+        if (user == null) {
+            return CONFLICT("User not found");
+        }
+
+        user.setServiceCenter(null);
+
+        userRepository.save(user);
+
+        return SUCCESS("Removed User");
     }
 }

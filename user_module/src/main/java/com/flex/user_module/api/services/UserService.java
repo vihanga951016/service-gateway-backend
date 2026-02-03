@@ -27,6 +27,10 @@ public interface UserService {
 
     ResponseEntity<?> getAllUsers(Pagination pagination, HttpServletRequest request);
 
+    ResponseEntity<?> employeeAssign(Integer id, HttpServletRequest request);
+
+    ResponseEntity<?> employeeReject(Integer id, HttpServletRequest request);
+
     ResponseEntity<?> decryptString(DecryptValue value, HttpServletRequest request);
 
     ResponseEntity<?> addUser(AddUser addUser, HttpServletRequest request);
@@ -44,6 +48,14 @@ public interface UserService {
     //todo create upload user image
 
     ResponseEntity<?> deleteUser(Integer id, HttpServletRequest request);
+
+    ResponseEntity<?> assignEmployeesToCenters(EmployeeAssign employeeAssign, HttpServletRequest request);
+
+    ResponseEntity<?> usersByCenter(Integer centerId, HttpServletRequest request);
+
+    ResponseEntity<?> nonAssignedUsers(Integer centerId, HttpServletRequest request);
+
+    ResponseEntity<?> removeUserFromCenter(Integer userId, HttpServletRequest request);
 
     //todo create a service for customer registration - google OAuth
 }

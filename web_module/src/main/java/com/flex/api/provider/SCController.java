@@ -46,6 +46,18 @@ public class SCController {
         return scService.getAllCenters(request);
     }
 
+    @GetMapping("/dropdown")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> dropdown(HttpServletRequest request) {
+        return scService.getAllForDropdown(request);
+    }
+
+    @GetMapping("/{id}/get")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> getCenter(@PathVariable("id") Integer id, HttpServletRequest request) {
+        return scService.getCenter(id, request);
+    }
+
     @DeleteMapping("/{id}/delete")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).CM)")
     public ResponseEntity<?> getAll(@PathVariable Integer id, HttpServletRequest request) {

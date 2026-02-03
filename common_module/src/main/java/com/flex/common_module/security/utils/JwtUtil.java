@@ -49,7 +49,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuedAt(new Date()) // 🕒 Now
-                .setExpiration(new Date(System.currentTimeMillis() + 10 * 60 * 1000)) // ⏳ 10 min
+                .setExpiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // ⏳ 10 min
                 .signWith(key) // 🔐 Sign with key
                 .compact(); // 📦 Build token
     }

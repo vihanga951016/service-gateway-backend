@@ -9,5 +9,5 @@ public interface UsersList {
     String getUserType();
     String getRole();
     String getServiceCenter();
-    String providerApproved();
+    String getProviderApproved();
 }

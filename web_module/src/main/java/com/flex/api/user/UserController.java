@@ -63,6 +63,18 @@ public class UserController {
         return userService.getAllUsers(pagination, request);
     }
 
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> approveAssign(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.employeeAssign(id, request);
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).UM)")
+    public ResponseEntity<?> rejectAssign(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.employeeReject(id, request);
+    }
+
     @PostMapping("/decrypt")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).DD)")
     public ResponseEntity<?> decrypt(@RequestBody DecryptValue value, HttpServletRequest request) {
@@ -111,4 +123,27 @@ public class UserController {
         return userService.deleteUser(id, request);
     }
 
+    @PostMapping("/assign-to-center")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).CE)")
+    public ResponseEntity<?> assignEmployeesToCenter(@RequestBody EmployeeAssign employeeAssign, HttpServletRequest request) {
+        return userService.assignEmployeesToCenters(employeeAssign, request);
+    }
+
+    @GetMapping("/center/{id}/get")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> getByCenter(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.usersByCenter(id, request);
+    }
+
+    @GetMapping("/center/{centerId}/get-non-assign")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).CE)")
+    public ResponseEntity<?> nonAssignToCenter(@PathVariable Integer centerId, HttpServletRequest request) {
+        return userService.nonAssignedUsers(centerId, request);
+    }
+
+    @PutMapping("/{id}/remove-from-center")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).CE)")
+    public ResponseEntity<?> removeUserFromCenter(@PathVariable Integer id, HttpServletRequest request) {
+        return userService.removeUserFromCenter(id, request);
+    }
 }
