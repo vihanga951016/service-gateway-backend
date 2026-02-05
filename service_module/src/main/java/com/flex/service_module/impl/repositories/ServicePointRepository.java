@@ -14,7 +14,15 @@ public interface ServicePointRepository extends JpaRepository<ServicePoint, Inte
 
     ServicePoint findByIdAndDeletedIsFalse(Integer id);
 
-    @Query("SELECT new ServicePoint(s.id, s.name, s.shortName, s.openTime, s.closeTime, s.temporaryClosed, s.deleted, s.serviceCenter.id, s.serviceCenter.name) " +
-            "FROM ServicePoint s WHERE s.serviceCenter.id=:serviceCenterId and s.deleted is false")
+    @Query("SELECT new ServicePoint(s.id, s.name, s.shortName, s.openTime, s.closeTime, s.temporaryClosed, s.deleted, " +
+            "s.serviceCenter.id, s.serviceCenter.name, COUNT(av.service.id)) " +
+            "FROM ServicePoint s " +
+            "LEFT JOIN AvailableService av ON av.servicePoint.id = s.id " +
+            "WHERE s.serviceCenter.id=:serviceCenterId and s.deleted is false " +
+            "GROUP BY " +
+            "        s.id, s.name, s.shortName, " +
+            "        s.openTime, s.closeTime, " +
+            "        s.temporaryClosed, s.deleted, " +
+            "        s.id, s.name")
     List<ServicePoint> servicePointsByCenter(@Param("serviceCenterId") Integer serviceCenterId);
 }

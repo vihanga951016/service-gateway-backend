@@ -41,21 +41,39 @@ public class ServiceController {
         return servicesService.getAllServices(pagination, request);
     }
 
-    @GetMapping("/not-assign-to-point/{pointId}")
+    @GetMapping("/available/point/{pointId}")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
-    public ResponseEntity<?> notAssignToPoint(@PathVariable Integer pointId, HttpServletRequest request) {
-        return servicesService.nonAssignedServicesForPoint(pointId, request);
+    public ResponseEntity<?> availableServices(@PathVariable Integer pointId, HttpServletRequest request) {
+        return servicesService.availableServicesForPoint(pointId, request);
+    }
+
+    @GetMapping("/assigned/point/{pointId}")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> assignedServices(@PathVariable Integer pointId, HttpServletRequest request) {
+        return servicesService.assignedServicesForPoint(pointId, request);
+    }
+
+    @GetMapping("/{id}/assigned-points")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> assignedPoints(@PathVariable Integer id, HttpServletRequest request) {
+        return servicesService.assignedPointsForService(id, request);
+    }
+
+    @PostMapping("/assign-to-point")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PM)")
+    public ResponseEntity<?> assignServices(@RequestBody AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+        return servicesService.assignServicesForPoint(assignServiceToPoint, request);
+    }
+
+    @PostMapping("/remove-from-point")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PM)")
+    public ResponseEntity<?> removeServices(@RequestBody AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+        return servicesService.removeServicesFromPoint(assignServiceToPoint, request);
     }
 
     @DeleteMapping("/{id}/delete")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).SM)")
     public ResponseEntity<?> delete(@PathVariable Integer id, HttpServletRequest request) {
         return servicesService.deleteService(id, request);
-    }
-
-    @PostMapping("/assign-to-point")
-    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PM)")
-    public ResponseEntity<?> delete(@RequestBody AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
-        return servicesService.assignServicesToPoint(assignServiceToPoint, request);
     }
 }

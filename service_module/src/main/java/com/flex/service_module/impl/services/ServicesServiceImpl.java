@@ -10,11 +10,7 @@ import com.flex.service_module.api.services.ServicesService;
 import com.flex.service_module.impl.entities.AvailableService;
 import com.flex.service_module.impl.entities.ServicePoint;
 import com.flex.service_module.impl.entities.ServiceProvider;
-import com.flex.service_module.impl.repositories.AvailableServiceRepository;
-import com.flex.service_module.impl.repositories.ServicePointRepository;
-import com.flex.service_module.impl.repositories.ServiceProviderRepository;
-import com.flex.service_module.impl.repositories.ServicesRepository;
-import com.flex.service_module.impl.services.helpers.SCServiceHelper;
+import com.flex.service_module.impl.repositories.*;
 import com.flex.service_module.impl.services.helpers.ServicesServiceHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +23,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.flex.common_module.http.ReturnResponse.*;;
 
@@ -49,6 +44,7 @@ public class ServicesServiceImpl implements ServicesService {
     private final ServicePointRepository servicePointRepository;
     private final ServiceProviderRepository serviceProviderRepository;
     private final AvailableServiceRepository availableServiceRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
 
     @Override
     public ResponseEntity<?> addService(com.flex.service_module.impl.entities.Service service, HttpServletRequest request) {
@@ -191,8 +187,145 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
-    public ResponseEntity<?> getService(Integer id, HttpServletRequest request) {
-        return null;
+    public ResponseEntity<?> availableServicesForPoint(Integer servicePointId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        ServicePoint servicePoint = servicePointRepository.findByIdAndDeletedIsFalse(servicePointId);
+
+        if (servicePoint == null) {
+            return CONFLICT("Service point not found");
+        }
+
+        List<AvailableService> assignedServices = availableServiceRepository.findAllByServicePointId(servicePointId);
+
+        List<Integer> unavailableServicesIds = assignedServices.stream().map(s -> s.getService().getId())
+                .toList();
+
+        List<com.flex.service_module.impl.entities.Service> allServices = servicesRepository
+                .findAllByProvider_IdAndDeletedIsFalse(provider.getId());
+
+        if (allServices == null || allServices.isEmpty()) {
+            return CONFLICT("No available services");
+        }
+
+        List<com.flex.service_module.impl.entities.Service> availableServices = allServices.stream().filter(
+                s -> !unavailableServicesIds.contains(s.getId())
+        ).toList();
+
+        return DATA(availableServices);
+    }
+
+    @Override
+    public ResponseEntity<?> assignedServicesForPoint(Integer servicePointId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        ServicePoint servicePoint = servicePointRepository.findByIdAndDeletedIsFalse(servicePointId);
+
+        if (servicePoint == null) {
+            return CONFLICT("Service point not found");
+        }
+
+        List<AvailableService> assignedServices = availableServiceRepository.findAllByServicePointId(servicePointId);
+
+        return DATA(
+                assignedServices.stream().map(
+                        AvailableService::getService
+                ).toList()
+        );
+    }
+
+    @Override
+    public ResponseEntity<?> assignedPointsForService(Integer service, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (!servicesRepository.existsByIdAndDeletedIsFalse(service)) {
+            return CONFLICT("Service not found");
+        }
+
+        return DATA(availableServiceRepository.findPointsByServiceId(service));
+    }
+
+    @Override
+    public ResponseEntity<?> assignServicesForPoint(AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServicePoint servicePoint = servicePointRepository
+                .findByIdAndDeletedIsFalse(assignServiceToPoint.getPointId());
+
+        if (servicePoint == null) {
+            return CONFLICT("Service point not found");
+        }
+
+        com.flex.service_module.impl.entities.Service service = servicesRepository
+                .findByIdAndDeletedIsFalse(assignServiceToPoint.getServiceId());
+
+        if (service == null) {
+            return CONFLICT("Service not found");
+        }
+
+        AvailableService availableService = AvailableService.builder()
+                .service(service)
+                .servicePoint(servicePoint)
+                .build();
+
+        availableServiceRepository.save(availableService);
+
+        return SUCCESS("Service assigned successfully");
+    }
+
+    @Override
+    public ResponseEntity<?> removeServicesFromPoint(AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServicePoint servicePoint = servicePointRepository
+                .findByIdAndDeletedIsFalse(assignServiceToPoint.getPointId());
+
+        if (servicePoint == null) {
+            return CONFLICT("Service point not found");
+        }
+
+        com.flex.service_module.impl.entities.Service service = servicesRepository
+                .findByIdAndDeletedIsFalse(assignServiceToPoint.getServiceId());
+
+        if (service == null) {
+            return CONFLICT("Service not found");
+        }
+
+        AvailableService availableService = availableServiceRepository.availableService(service.getId(), servicePoint.getId());
+
+        if (availableService == null) {
+            return CONFLICT("This service is not assigned to this point");
+        }
+
+        availableServiceRepository.delete(availableService);
+
+        return SUCCESS("Service removed successfully");
     }
 
     @Override
@@ -244,49 +377,6 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
-    public ResponseEntity<?> nonAssignedServicesForPoint(Integer pointId, HttpServletRequest request) {
-        log.info(request.getRequestURI());
-
-        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
-
-        if (userClaims == null || userClaims.getUserId() == null) {
-            return CONFLICT("User not found");
-        }
-
-        ServiceProvider provider = serviceProviderRepository
-                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
-
-        if (provider == null) {
-            return CONFLICT("Service provider not found");
-        }
-
-        ServicePoint servicePoint = servicePointRepository.findByIdAndDeletedIsFalse(pointId);
-
-        if (servicePoint == null) {
-            return CONFLICT("Service point not found");
-        }
-
-        List<com.flex.service_module.impl.entities.Service> serviceList =
-                servicesRepository.findAllByProvider_IdAndDeletedIsFalse(provider.getId());
-
-        if (serviceList.isEmpty()) {
-            return CONFLICT("No services found");
-        }
-
-        List<Integer> assignedServicesIds = availableServiceRepository.availableServicesIds(provider.getId());
-
-        log.info("assign: {}", assignedServicesIds);
-
-        List<com.flex.service_module.impl.entities.Service> notAssignedServicesIds = serviceList.stream()
-                .filter(s -> !assignedServicesIds.contains(s.getId()))
-                .toList();
-
-        log.info("assign: {}", notAssignedServicesIds);
-        
-        return DATA(notAssignedServicesIds);
-    }
-
-    @Override
     public ResponseEntity<?> deleteService(Integer id, HttpServletRequest request) {
         log.info(request.getRequestURI());
 
@@ -301,43 +391,5 @@ public class ServicesServiceImpl implements ServicesService {
         servicesRepository.save(service);
 
         return SUCCESS("Service deleted successfully");
-    }
-
-    @Override
-    public ResponseEntity<?> assignServicesToPoint(AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
-        log.info(request.getRequestURI());
-
-        if (assignServiceToPoint.getServiceId() == null || assignServiceToPoint.getPointId() == null) {
-            return CONFLICT("Invalid assignment");
-        }
-
-        ServicePoint servicePoint = servicePointRepository.findByIdAndDeletedIsFalse(assignServiceToPoint.getServiceId());
-
-        if (servicePoint == null) {
-            return CONFLICT("Service point not found");
-        }
-
-        com.flex.service_module.impl.entities.Service service = servicesRepository
-                .findByIdAndDeletedIsFalse(assignServiceToPoint.getServiceId());
-
-        if (service == null) {
-            return CONFLICT("Service not found");
-        }
-
-        AvailableService exist = availableServiceRepository
-                .availableService(assignServiceToPoint.getServiceId(), assignServiceToPoint.getPointId());
-
-        if (exist != null ) {
-            return CONFLICT("Service already assigned");
-        }
-
-        AvailableService availableService = AvailableService.builder()
-                .servicePoint(servicePoint)
-                .service(service)
-                .build();
-
-        availableServiceRepository.save(availableService);
-
-        return SUCCESS("Service assigned successfully");
     }
 }

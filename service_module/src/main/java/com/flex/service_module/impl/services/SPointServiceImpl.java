@@ -130,4 +130,21 @@ public class SPointServiceImpl implements ServicePointService {
 
         return DATA(servicePointRepository.servicePointsByCenter(serviceCenterId));
     }
+
+    @Override
+    public ResponseEntity<?> removePoint(Integer pointId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        ServicePoint servicePoint = servicePointRepository.findByIdAndDeletedIsFalse(pointId);
+
+        if (servicePoint == null) {
+            return CONFLICT("Service point not found");
+        }
+
+        servicePoint.setDeleted(true);
+
+        servicePointRepository.save(servicePoint);
+
+        return SUCCESS("Service point removed successfully");
+    }
 }

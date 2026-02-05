@@ -38,4 +38,10 @@ public class SPointController {
     public ResponseEntity<?> getAll(@PathVariable Integer serviceCenterId, HttpServletRequest request) {
         return servicePointService.getAllPoints(serviceCenterId, request);
     }
+
+    @DeleteMapping("/{pointId}/delete")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> remove(@PathVariable Integer pointId, HttpServletRequest request) {
+        return servicePointService.removePoint(pointId, request);
+    }
 }

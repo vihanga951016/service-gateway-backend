@@ -17,4 +17,6 @@ public interface ServicePointService {
     ResponseEntity<?> updateServicePoint(ServicePoint servicePoint, HttpServletRequest request);
 
     ResponseEntity<?> getAllPoints(Integer serviceCenterId, HttpServletRequest request);
+
+    ResponseEntity<?> removePoint(Integer pointId, HttpServletRequest request);
 }

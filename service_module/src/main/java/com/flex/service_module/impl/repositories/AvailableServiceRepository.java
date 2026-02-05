@@ -13,6 +13,10 @@ public interface AvailableServiceRepository extends JpaRepository<AvailableServi
             "WHERE s.service.id=:serviceId AND s.servicePoint.id=:pointId")
     AvailableService availableService(@Param("serviceId") Integer serviceId, @Param("pointId") Integer pointId);
 
-    @Query("SELECT a.service.id FROM AvailableService a WHERE a.servicePoint.id=:providerId")
-    List<Integer> availableServicesIds(@Param("providerId") Integer providerId);
+    @Query("SELECT a FROM AvailableService a WHERE a.servicePoint.id=:pointId")
+    List<AvailableService> findAllByServicePointId(@Param("pointId") Integer pointId);
+
+    @Query("SELECT a.id as id, a.servicePoint.id as pointId, a.service.id as serviceId, a.servicePoint.name as pointName, " +
+            "a.servicePoint.serviceCenter.name as serviceCenter FROM AvailableService a WHERE a.service.id=:serviceId")
+    List<com.flex.service_module.api.http.DTO.AvailableService> findPointsByServiceId(@Param("serviceId") Integer serviceId);
 }

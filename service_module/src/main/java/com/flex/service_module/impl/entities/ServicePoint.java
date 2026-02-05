@@ -41,9 +41,11 @@ public class ServicePoint {
     private Integer serviceCenterId;
     @Transient
     private String serviceCenterName;
+    @Transient
+    private Long serviceCount;
 
     public ServicePoint(Integer id, String name, String shortName, LocalTime openTime, LocalTime closeTime, boolean temporaryClosed,
-                        boolean deleted, Integer serviceCenterId, String serviceCenterName) {
+                        boolean deleted, Integer serviceCenterId, String serviceCenterName, Long serviceCount) {
         this.id = id;
         this.name = name;
         this.shortName = shortName;
@@ -53,5 +55,6 @@ public class ServicePoint {
         this.deleted = deleted;
         this.serviceCenterId = serviceCenterId;
         this.serviceCenterName = serviceCenterName;
+        this.serviceCount = serviceCount;
     }
 }
