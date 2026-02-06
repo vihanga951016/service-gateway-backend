@@ -41,6 +41,12 @@ public class ServiceController {
         return servicesService.getAllServices(pagination, request);
     }
 
+    @GetMapping("/dropdown")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> dropdown(HttpServletRequest request) {
+        return servicesService.getAllServices(request);
+    }
+
     @GetMapping("/available/point/{pointId}")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
     public ResponseEntity<?> availableServices(@PathVariable Integer pointId, HttpServletRequest request) {

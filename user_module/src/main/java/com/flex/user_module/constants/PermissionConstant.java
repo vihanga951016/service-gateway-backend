@@ -11,4 +11,5 @@ public class PermissionConstant {
     public static final String SM = "Services Management";
     public static final String CE = "Center Employee M.";
     public static final String PM = "Points Management";
+    public static final String CS = "Cluster Management";
 }

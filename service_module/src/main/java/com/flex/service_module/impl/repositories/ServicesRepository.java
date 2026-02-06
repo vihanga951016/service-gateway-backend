@@ -24,8 +24,11 @@ public interface ServicesRepository extends JpaRepository<Service, Integer> {
     List<Service> findAllByProvider_IdAndDeletedIsFalse(Integer providerId);
 
     @Query("SELECT s.id as id, s.name as name, s.serviceTime as time, s.totalPrice as totalPrice, s.downPrice as downPrice " +
-            "FROM Service s WHERE s.provider.id=:providerId")
+            "FROM Service s WHERE s.provider.id=:providerId AND s.deleted = false ")
     List<ServicesDropdown> getServicesDropdown(@Param("providerId") Integer providerId);
+
+    @Query("SELECT s FROM Service s WHERE s.id in (:ids) AND s.deleted is false")
+    List<Service> getServicesByIds(@Param("ids") List<Integer> ids);
 
     @Query(
             "SELECT s FROM Service s " +

@@ -377,6 +377,26 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
+    public ResponseEntity<?> getAllServices(HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
+
+        if (userClaims == null || userClaims.getUserId() == null) {
+            return CONFLICT("User not found");
+        }
+
+        ServiceProvider provider = serviceProviderRepository
+                .findByProviderIdAndDeletedIsFalse(userClaims.getProvider());
+
+        if (provider == null) {
+            return CONFLICT("Service provider not found");
+        }
+
+        return DATA(servicesRepository.getServicesDropdown(provider.getId()));
+    }
+
+    @Override
     public ResponseEntity<?> deleteService(Integer id, HttpServletRequest request) {
         log.info(request.getRequestURI());
 

@@ -24,6 +24,8 @@ public interface ServicesService {
 
     ResponseEntity<?> getAllServices(Pagination pagination, HttpServletRequest request);
 
+    ResponseEntity<?> getAllServices(HttpServletRequest request);
+
     ResponseEntity<?> deleteService(Integer id, HttpServletRequest request);
 
 }
