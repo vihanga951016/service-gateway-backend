@@ -4,6 +4,7 @@ import com.flex.common_module.security.http.response.UserClaims;
 import com.flex.common_module.security.utils.JwtUtil;
 import com.flex.service_module.api.http.requests.AddCluster;
 import com.flex.service_module.api.http.requests.AssignCluster;
+import com.flex.service_module.api.http.requests.UpdateCenterClusterService;
 import com.flex.service_module.api.http.responses.ClusterData;
 import com.flex.service_module.api.http.responses.ClusterServiceData;
 import com.flex.service_module.api.services.CSService;
@@ -39,6 +40,8 @@ public class ClusterServiceImpl implements CSService {
     private final ServiceProviderRepository serviceProviderRepository;
     private final ServiceCenterRepository serviceCenterRepository;
     private final CenterClusterRepository centerClusterRepository;
+    private final CCSRepository ccsRepository;
+    private final AvailableServiceRepository availableServiceRepository;
 
     @Override
     public ResponseEntity<?> addCluster(AddCluster addCluster, HttpServletRequest request) {
@@ -258,10 +261,8 @@ public class ClusterServiceImpl implements CSService {
     public ResponseEntity<?> assignClusterToCenter(AssignCluster assignCluster, HttpServletRequest request) {
         log.info(request.getRequestURI());
 
-        Cluster cluster = clusterRepository.findByIdAndDeletedIsFalse(assignCluster.getClusterId());
-
-        if (cluster == null) {
-            return CONFLICT("Cluster not found");
+        if (assignCluster.getClusterIds().isEmpty()) {
+            return CONFLICT("Clusters not found");
         }
 
         ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(assignCluster.getCenterId());
@@ -270,18 +271,55 @@ public class ClusterServiceImpl implements CSService {
             return CONFLICT("Service center not found");
         }
 
-        CenterCluster centerCluster = centerClusterRepository.centerCluster(assignCluster.getCenterId(), assignCluster.getClusterId());
+        List<CenterCluster> centerClusters = new ArrayList<>();
+        List<CenterClusterServices> centerClusterServices = new ArrayList<>();
 
-        if (centerCluster != null) {
-            return CONFLICT("Cluster already assigned");
+        for (Integer clusterId : assignCluster.getClusterIds()) {
+            Cluster cluster = clusterRepository.findByIdAndDeletedIsFalse(clusterId);
+
+            if (cluster == null) {
+                String message = "Cluster not found for this id: " + clusterId;
+                return CONFLICT(message);
+            }
+
+            CenterCluster centerCluster = centerClusterRepository.centerCluster(assignCluster.getCenterId(), clusterId);
+
+            if (centerCluster != null) {
+                return CONFLICT("Cluster already assigned");
+            }
+
+            List<ClusterService> clusterServices = clusterServiceRepository.findAllByCluster_IdOrderById(cluster.getId());
+
+            if (clusterServices.isEmpty()) {
+                return CONFLICT("Services not assigned to this cluster");
+            }
+
+            CenterCluster assign = CenterCluster.builder()
+                    .cluster(cluster)
+                    .serviceCenter(serviceCenter)
+                    .build();
+
+            for (ClusterService clusterService : clusterServices) {
+                CenterClusterServices centerClusterService = CenterClusterServices.builder()
+                        .centerCluster(assign)
+                        .service(clusterService.getService())
+                        .orderNumber(clusterService.getOrderNumber())
+                        .prevOrderNumber(clusterService.getOrderNumber()) //this is useful when disable
+                        .total(clusterService.getService().getTotalPrice())
+                        .downPay(clusterService.getService().getDownPrice())
+                        .serviceTime(clusterService.getService().getServiceTime())
+                        .disabled(false)
+                        .build();
+
+                centerClusterServices.add(centerClusterService);
+            }
+
+            centerClusters.add(assign);
         }
 
-        CenterCluster assign = CenterCluster.builder()
-                .cluster(cluster)
-                .serviceCenter(serviceCenter)
-                .build();
+        centerClusterRepository.saveAll(centerClusters);
 
-        centerClusterRepository.save(assign);
+        ccsRepository.saveAll(centerClusterServices);
 
         return SUCCESS("Cluster assigned");
     }
@@ -296,6 +334,166 @@ public class ClusterServiceImpl implements CSService {
             return CONFLICT("Service center not found");
         }
 
-        return null;
+        return DATA(centerClusterRepository.getClustersByCenterId(serviceCenter.getId()));
+    }
+
+    @Override
+    public ResponseEntity<?> removeClusterFromCenter(Integer centerClusterId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        CenterCluster centerCluster = centerClusterRepository.getCenterClusterById(centerClusterId);
+
+        if (centerCluster == null) {
+            return CONFLICT("Cluster not found");
+        }
+
+        List<CenterClusterServices> centerClusterServices = ccsRepository.findAllByCenterCluster_id(centerClusterId);
+
+        if (!centerClusterServices.isEmpty()) {
+            ccsRepository.deleteAll(centerClusterServices);
+        }
+
+        centerClusterRepository.delete(centerCluster);
+
+        return SUCCESS("Cluster removed successfully");
+    }
+
+    @Override
+    public ResponseEntity<?> disableCCServices(Integer ccServiceId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+         CenterClusterServices centerClusterServices = ccsRepository.findCenterClusterServicesById(ccServiceId);
+
+         if (centerClusterServices == null) {
+             return CONFLICT("Service center not found");
+         }
+
+         centerClusterServices.setDisabled(!centerClusterServices.isDisabled());
+
+         ccsRepository.save(centerClusterServices);
+
+        List<CenterClusterServices> clusterServicesList = ccsRepository
+                .findAllByCenterCluster_id(centerClusterServices.getCenterCluster().getId());
+
+        int i = 1;
+
+        for (CenterClusterServices services : clusterServicesList) {
+            if (!services.isDisabled()) {
+                log.info("id: {}", i);
+                services.setOrderNumber(i);
+                i++;
+            } else {
+                log.info("disable: {}", services.getService());
+            }
+        }
+
+        ccsRepository.saveAll(clusterServicesList);
+
+        return centerClusterServices.isDisabled() ? SUCCESS("Service disabled") : SUCCESS("Service Enabled");
+    }
+
+    @Override
+    public ResponseEntity<?> getAllCenterClusterServices(Integer ccId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (!centerClusterRepository.existsById(ccId)) {
+            return CONFLICT("Cluster not found in this center");
+        }
+
+        return DATA(ccsRepository.centerClusterServicesData(ccId));
+    }
+
+    @Override
+    public ResponseEntity<?> updateCenterClusterService(UpdateCenterClusterService updateClusterService,
+                                                        HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (updateClusterService.getId() == null) {
+            return CONFLICT("Cluster id not found");
+        }
+
+        CenterClusterServices centerClusterService = ccsRepository.findCenterClusterServicesById(updateClusterService.getId());
+
+        if (centerClusterService == null) {
+            return CONFLICT("Cluster not found in this center");
+        }
+
+        if (!updateClusterService.getTotal().equals(centerClusterService.getTotal())) {
+            centerClusterService.setTotal(updateClusterService.getTotal());
+        }
+
+        if (!updateClusterService.getDownPay().equals(centerClusterService.getDownPay())) {
+            centerClusterService.setDownPay(updateClusterService.getDownPay());
+        }
+
+        if (updateClusterService.getServiceTime() != null
+                && !updateClusterService.getServiceTime().equals(centerClusterService.getServiceTime())) {
+            centerClusterService.setServiceTime(updateClusterService.getServiceTime());
+        }
+
+        ccsRepository.save(centerClusterService);
+
+        return SUCCESS("Cluster updated successfully");
+    }
+
+    @Override
+    public ResponseEntity<?> reOrderServices(Integer ccId, List<UpdateCenterClusterService> serviceList, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (ccId == null) {
+            return CONFLICT("Cluster id not found");
+        }
+
+        if (!centerClusterRepository.existsById(ccId)) {
+            return CONFLICT("Cluster not found in this center");
+        }
+
+        List<CenterClusterServices> centerClusterServices = ccsRepository.findAllByCenterCluster_id(ccId);
+
+        if (centerClusterServices.isEmpty()) {
+            return CONFLICT("No services for this cluster");
+        }
+
+        for (UpdateCenterClusterService updateCenterClusterService : serviceList) {
+
+            CenterClusterServices clusterService = ccsRepository
+                    .findCenterClusterServicesById(updateCenterClusterService.getId());
+
+            clusterService.setOrderNumber(updateCenterClusterService.getOrderNumber());
+            clusterService.setPrevOrderNumber(updateCenterClusterService.getOrderNumber()); //this is useful when disable
+
+            ccsRepository.save(clusterService);
+        }
+
+        return SUCCESS(null);
+    }
+
+    @Override
+    public ResponseEntity<?> clusterServicesMapCheck(Integer ccId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (ccId == null) {
+            return CONFLICT("Cluster id not found");
+        }
+
+        CenterCluster centerCluster = centerClusterRepository.getCenterClusterById(ccId);
+
+        if (centerCluster == null) {
+            return CONFLICT("Cluster not found in this center");
+        }
+
+        List<CenterClusterServices> centerClusterServices = ccsRepository.findAllByCenterCluster_id(ccId);
+
+        List<com.flex.service_module.impl.entities.Service> services = centerClusterServices.stream()
+                .map(CenterClusterServices::getService).toList();
+
+        List<Integer> pointAvailableServiceIds = availableServiceRepository
+                .findServicesByServiceCenterId(centerCluster.getServiceCenter().getId());
+
+        List<com.flex.service_module.impl.entities.Service> mustAssignServices = services.stream().filter(
+                s -> !pointAvailableServiceIds.contains(s.getId())
+        ).toList();
+
+        return DATA(mustAssignServices);
     }
 }

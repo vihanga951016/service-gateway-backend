@@ -4,10 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class AssignCluster {
-    private Integer clusterId;
+    private List<Integer> clusterIds;
     private Integer centerId;
 }
