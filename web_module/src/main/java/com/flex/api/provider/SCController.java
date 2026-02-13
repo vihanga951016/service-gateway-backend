@@ -64,4 +64,9 @@ public class SCController {
         return scService.deleteCenter(id, request);
     }
 
+    @GetMapping("/{id}/get-providing-services")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> providingServices(@PathVariable("id") Integer id, HttpServletRequest request) {
+        return scService.commonCenterServices(id, request);
+    }
 }

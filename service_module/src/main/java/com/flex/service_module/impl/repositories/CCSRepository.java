@@ -2,6 +2,7 @@ package com.flex.service_module.impl.repositories;
 
 import com.flex.service_module.api.http.DTO.CenterClusterServicesData;
 import com.flex.service_module.impl.entities.CenterClusterServices;
+import com.flex.service_module.impl.entities.Service;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,4 +18,7 @@ public interface CCSRepository extends JpaRepository<CenterClusterServices, Inte
     @Query("SELECT c.id as id, c.service.name as service, c.total as total, c.downPay as downPay, c.orderNumber as orderNumber, " +
             "c.serviceTime as serviceTime, c.disabled as disabled FROM CenterClusterServices c WHERE c.centerCluster.id=:ccId ORDER BY c.orderNumber ASC")
     List<CenterClusterServicesData> centerClusterServicesData(@Param("ccId") Integer ccId);
+
+    @Query("SELECT c.service FROM CenterClusterServices c WHERE c.centerCluster.id=:ccId ORDER BY c.orderNumber asc")
+    List<Service> getServicesByCenterClusterId(@Param("ccId") Integer ccId);
 }

@@ -4,12 +4,13 @@ import com.flex.common_module.http.pagination.Pagination;
 import com.flex.common_module.http.pagination.Sorting;
 import com.flex.common_module.security.http.response.UserClaims;
 import com.flex.common_module.security.utils.JwtUtil;
+import com.flex.service_module.api.http.DTO.CenterClusterData;
 import com.flex.service_module.api.http.DTO.classes.ServiceCenterViewDTO;
+import com.flex.service_module.api.http.responses.LoadCenterServices;
 import com.flex.service_module.api.services.SCService;
 import com.flex.service_module.impl.entities.ServiceCenter;
 import com.flex.service_module.impl.entities.ServiceProvider;
-import com.flex.service_module.impl.repositories.ServiceCenterRepository;
-import com.flex.service_module.impl.repositories.ServiceProviderRepository;
+import com.flex.service_module.impl.repositories.*;
 import com.flex.service_module.impl.services.helpers.SCServiceHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static com.flex.common_module.http.ReturnResponse.*;
 
@@ -42,6 +45,10 @@ public class SCServiceImpl implements SCService {
 
     private final ServiceCenterRepository serviceCenterRepository;
     private final ServiceProviderRepository serviceProviderRepository;
+
+    private final CenterClusterRepository centerClusterRepository;
+    private final ServicePointRepository servicePointRepository;
+    private final AvailableServiceRepository availableServiceRepository;
 
     @Override
     public ResponseEntity<?> addNewCenter(ServiceCenter serviceCenter, HttpServletRequest request) {
@@ -257,5 +264,51 @@ public class SCServiceImpl implements SCService {
         serviceCenterRepository.save(serviceCenter);
 
         return SUCCESS("Service center deleted");
+    }
+
+    @Override
+    public ResponseEntity<?> commonCenterServices(Integer centerId, HttpServletRequest request) {
+        log.info(request.getRequestURI());
+
+        if (!serviceCenterRepository.existsByIdAndDeletedIsFalse(centerId)) {
+            return CONFLICT("Service center not found");
+        }
+
+        List<LoadCenterServices> loadCenterServices = new ArrayList<>();
+
+        List<CenterClusterData> centerClusters = centerClusterRepository.getClustersByCenterId(centerId);
+
+        // add center cluster
+        if (!centerClusters.isEmpty()) {
+            for (CenterClusterData centerClusterData : centerClusters) {
+                LoadCenterServices centerService = LoadCenterServices.builder()
+                        .serviceId(centerClusterData.getId())
+                        .service(centerClusterData.getName())
+                        .cluster(true)
+                        .build();
+
+                loadCenterServices.add(centerService);
+            }
+        }
+
+        // add available services individually
+        List<Integer> servicePoints = servicePointRepository.servicePointIdsByCenter(centerId);
+
+        List<com.flex.service_module.impl.entities.Service> individualServicesInCenter = availableServiceRepository
+                .servicesInPoints(servicePoints);
+
+        if (!individualServicesInCenter.isEmpty()) {
+            for (com.flex.service_module.impl.entities.Service service : individualServicesInCenter) {
+                LoadCenterServices centerService = LoadCenterServices.builder()
+                        .serviceId(service.getId())
+                        .service(service.getName())
+                        .cluster(false)
+                        .build();
+
+                loadCenterServices.add(centerService);
+            }
+        }
+
+        return DATA(loadCenterServices);
     }
 }

@@ -8,7 +8,8 @@
 		<module>user_module</module>
 		<module>service_module</module>
 		<module>common_module</module>
-	</modules>
+        <module>job_module</module>
+    </modules>
     <parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>

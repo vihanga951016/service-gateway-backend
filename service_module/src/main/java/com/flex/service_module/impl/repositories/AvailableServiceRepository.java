@@ -2,6 +2,7 @@ package com.flex.service_module.impl.repositories;
 
 import com.flex.service_module.impl.entities.AvailableService;
 import com.flex.service_module.impl.entities.Service;
+import com.flex.service_module.impl.entities.ServicePoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,4 +24,13 @@ public interface AvailableServiceRepository extends JpaRepository<AvailableServi
 
     @Query("SELECT a.service.id FROM AvailableService a WHERE a.servicePoint.serviceCenter.id=:serviceCenterId group by a.service.id")
     List<Integer> findServicesByServiceCenterId(@Param("serviceCenterId") Integer serviceCenterId);
+
+    @Query("SELECT a.service FROM AvailableService a WHERE a.servicePoint.id in (:ids) GROUP BY a.service.id")
+    List<Service> servicesInPoints(@Param("ids") List<Integer> pointsIds);
+
+    @Query("SELECT a.servicePoint FROM AvailableService a WHERE a.service.id=:serviceId")
+    List<ServicePoint> servicePointsFromService(@Param("serviceId") Integer serviceId);
+
+    @Query("SELECT a.servicePoint FROM AvailableService a WHERE a.service.id in (:serviceId) GROUP BY a.servicePoint.id")
+    List<ServicePoint> servicePointsFromServiceIds(@Param("serviceIds") List<Integer> serviceIds);
 }

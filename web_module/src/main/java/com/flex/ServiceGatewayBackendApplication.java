@@ -9,7 +9,8 @@ import org.springframework.cache.annotation.EnableCaching;
 				"com.flex.*",
 				"com.flex.common_module",
 				"com.flex.service_module",
-				"com.flex.user_module"
+				"com.flex.user_module",
+				"com.flex.job_module"
 		}
 )
 @EnableCaching

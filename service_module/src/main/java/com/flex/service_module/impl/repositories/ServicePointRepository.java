@@ -25,4 +25,7 @@ public interface ServicePointRepository extends JpaRepository<ServicePoint, Inte
             "        s.temporaryClosed, s.deleted, " +
             "        s.id, s.name")
     List<ServicePoint> servicePointsByCenter(@Param("serviceCenterId") Integer serviceCenterId);
+
+    @Query("SELECT s.id FROM ServicePoint s WHERE s.serviceCenter.id=:serviceCenterId and s.deleted is false")
+    List<Integer> servicePointIdsByCenter(@Param("serviceCenterId") Integer serviceCenterId);
 }

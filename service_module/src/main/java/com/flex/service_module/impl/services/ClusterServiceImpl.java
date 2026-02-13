@@ -2,11 +2,13 @@ package com.flex.service_module.impl.services;
 
 import com.flex.common_module.security.http.response.UserClaims;
 import com.flex.common_module.security.utils.JwtUtil;
+import com.flex.service_module.api.http.DTO.CenterClusterData;
 import com.flex.service_module.api.http.requests.AddCluster;
 import com.flex.service_module.api.http.requests.AssignCluster;
 import com.flex.service_module.api.http.requests.UpdateCenterClusterService;
 import com.flex.service_module.api.http.responses.ClusterData;
 import com.flex.service_module.api.http.responses.ClusterServiceData;
+import com.flex.service_module.api.http.responses.LoadCenterServices;
 import com.flex.service_module.api.services.CSService;
 import com.flex.service_module.impl.entities.*;
 import com.flex.service_module.impl.repositories.*;
@@ -42,6 +44,7 @@ public class ClusterServiceImpl implements CSService {
     private final CenterClusterRepository centerClusterRepository;
     private final CCSRepository ccsRepository;
     private final AvailableServiceRepository availableServiceRepository;
+    private final ServicePointRepository servicePointRepository;
 
     @Override
     public ResponseEntity<?> addCluster(AddCluster addCluster, HttpServletRequest request) {
