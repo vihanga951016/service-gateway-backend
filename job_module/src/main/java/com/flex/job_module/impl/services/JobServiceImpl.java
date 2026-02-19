@@ -1,7 +1,5 @@
 package com.flex.job_module.impl.services;
 
-import com.flex.common_module.constants.Colors;
-import com.flex.job_module.api.http.DTO.ServiceTimeProjection;
 import com.flex.job_module.api.http.requests.PrepareJob;
 import com.flex.job_module.api.http.responses.PreparedJob;
 import com.flex.job_module.api.services.JobService;
@@ -13,25 +11,23 @@ import com.flex.job_module.impl.repositories.CustomerRepository;
 import com.flex.job_module.impl.repositories.JobAtPointRepository;
 import com.flex.job_module.impl.repositories.JobRepository;
 import com.flex.job_module.impl.services.helper.JobServiceHelper;
+import com.flex.service_module.api.http.DTO.BestServicePointForJob;
 import com.flex.service_module.impl.entities.AvailableService;
 import com.flex.service_module.impl.entities.ServiceCenter;
 import com.flex.service_module.impl.entities.ServicePoint;
 import com.flex.service_module.impl.repositories.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.flex.common_module.http.ReturnResponse.*;
 
@@ -59,12 +55,9 @@ public class JobServiceImpl implements JobService {
 
     private final JobServiceHelper jobServiceHelper;
 
+    @Transactional
     @Override
     public ResponseEntity<?> prepareJob(PrepareJob prepareJob, HttpServletRequest request) {
-
-        if (!serviceCenterRepository.existsByIdAndDeletedIsFalse(prepareJob.getServiceCenterId())) {
-            return CONFLICT("Service center not found");
-        }
 
         ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(prepareJob.getServiceCenterId());
 
@@ -93,18 +86,17 @@ public class JobServiceImpl implements JobService {
         Job job = Job.builder()
                 .customer(customer)
                 .appointmentDate(prepareJob.getAppointmentDate())
-                .appointmentTime(prepareJob.getAppointmentTime())
                 .status(JobStatus.PENDING)
                 .dummy(true)
                 .build();
 
         jobRepository.save(job);
 
-        com.flex.service_module.impl.entities.Service service = null;
-
         if (prepareJob.getCenterClusterId() != null) {
 
             if (!centerClusterRepository.existsById(prepareJob.getCenterClusterId())) {
+                jobRepository.delete(job);
+                customerRepository.delete(customer);
                 return CONFLICT("Cluster not found");
             }
 
@@ -113,6 +105,8 @@ public class JobServiceImpl implements JobService {
                     .getServicesByCenterClusterId(prepareJob.getCenterClusterId());
 
             if (centerClusterServices.isEmpty()) {
+                jobRepository.delete(job);
+                customerRepository.delete(customer);
                 return CONFLICT("Services not found for cluster");
             }
 
@@ -126,11 +120,6 @@ public class JobServiceImpl implements JobService {
                 LocalTime minimumEndTime = null;
 
                 int i = 0;
-                System.out.println(" ");
-                log.info(Colors.YELLOW + "service: " + centerClusterService.getName() + Colors.RESET);
-                log.info(Colors.YELLOW + "start time: " + nextStartTime + Colors.RESET);
-                log.info(Colors.YELLOW + "service time: " + centerClusterService.getServiceTime() + Colors.RESET);
-                System.out.println(" ");
                 for (ServicePoint servicePoint : servicePointList) {
                     //must have service in service point
                     AvailableService availableService = availableServiceRepository
@@ -149,18 +138,18 @@ public class JobServiceImpl implements JobService {
 
                             if (prevJobIds.contains(job.getId())) {
 
-//                                log.info(Colors.YELLOW + "start time: " + nextStartTime + Colors.RESET);
-//                                log.info(Colors.YELLOW + "service time: " + centerClusterService.getServiceTime() + Colors.RESET);
-
                                 nextStartTime = previousJobs.getLast().getEndTime();
 
-                                // related to the same job
                                 JobAtPoint createJobAtPoint = jobServiceHelper
                                         .createJobAtPoint(servicePoint, centerClusterService, job,
-                                                previousJobs.getLast().getEndTime(), true);
+                                                nextStartTime, true);
 
-                                //todo remove if need:
-                                jobAtPointRepository.save(createJobAtPoint);
+                                if (createJobAtPoint != null) {
+                                    jobAtPointRepository.save(createJobAtPoint);
+                                } else {
+                                    jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                                    return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
+                                }
 
                                 jobsAtPoint.add(createJobAtPoint);
                                 break;
@@ -177,8 +166,6 @@ public class JobServiceImpl implements JobService {
                                     suitablePoint = servicePoint;
                                     minimumEndTime = previousJobs.getLast().getEndTime();
                                     startTime = minimumEndTime;
-
-                                    //todo
                                     nextStartTime = minimumEndTime;
                                 }
                             }
@@ -188,7 +175,15 @@ public class JobServiceImpl implements JobService {
                                     .createJobAtPoint(servicePoint, centerClusterService, job,
                                             nextStartTime, true);
 
-                            nextStartTime = jobServiceHelper.calculateEndTime(nextStartTime, centerClusterService.getServiceTime());
+                            if (createJobAtPoint != null) {
+                                jobAtPointRepository.save(createJobAtPoint);
+                            } else {
+                                jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                                return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
+                            }
+
+                            nextStartTime = jobServiceHelper.calculateEndTime(nextStartTime,
+                                    centerClusterService.getServiceTime(), servicePoint.getCloseTime());
 
                             jobAtPointRepository.save(createJobAtPoint);
 
@@ -199,23 +194,23 @@ public class JobServiceImpl implements JobService {
                 }
 
                 i++;
-
-                log.info(Colors.YELLOW + "end time: " + nextStartTime + Colors.RESET);
-
                 if (servicePointList.size() == (i + 1)) {
                     // 0 means no service points
                     if (minimumServiceTimeFromSec == 0) {
                         return CONFLICT("No suitable service point for " + centerClusterService.getName());
                     }
 
-                    log.info(Colors.YELLOW + "start time: " + nextStartTime + Colors.RESET);
-                    log.info(Colors.YELLOW + "service time: " + centerClusterService.getServiceTime() + Colors.RESET);
-
                     JobAtPoint createJobAtPoint = jobServiceHelper
                             .createJobAtPoint(suitablePoint, centerClusterService, job,
                                     nextStartTime, true);
 
-                    //todo remove if need:
+                    if (createJobAtPoint != null) {
+                        jobAtPointRepository.save(createJobAtPoint);
+                    } else {
+                        jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                        return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
+                    }
+
                     jobAtPointRepository.save(createJobAtPoint);
 
                     jobsAtPoint.add(createJobAtPoint);
@@ -231,6 +226,23 @@ public class JobServiceImpl implements JobService {
                     .jobsAtPoint(jobsAtPoint).build());
 
         } else {
+
+            if (prepareJob.getServicesIds().isEmpty()) {
+                return CONFLICT("Choose services first");
+            }
+
+            Integer bestServicePoint = servicePointList.getFirst().getId();
+            int availableServices = 0;
+            double minimumServiceTimeFromSec = 0;
+
+            HashMap<Integer, Integer> availablePointsForService = new HashMap<>();
+
+            for (Integer serviceId : prepareJob.getServicesIds()) {
+                // todo: find the available service points by service and service center
+
+                // todo: put service id as key and point ids as values in hashmap.
+            }
+
             return null;
         }
     }

@@ -42,7 +42,6 @@ public class Job {
     @Column(nullable = false)
     private LocalDate appointmentDate;
     @JsonFormat(pattern = "HH:mm:ss")
-    @Column(nullable = false)
     private LocalTime appointmentTime;
     private Integer totalPrice;
     private Integer downPayment;

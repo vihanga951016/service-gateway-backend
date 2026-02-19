@@ -19,6 +19,5 @@ public class PrepareJob {
     private List<Integer> servicesIds;
     private Integer serviceCenterId;
     private LocalDate appointmentDate;
-    private LocalTime appointmentTime;
     private String notes;
 }
