@@ -11,4 +11,6 @@ import java.util.List;
 
 public interface JobRepository extends JpaRepository<Job, Integer> {
     Job findByIdAndDummyIsTrue(Integer id);
+
+    Job findByCustomer_IdAndAndAppointmentDate(Integer customerId, LocalDate appointmentDate);
 }

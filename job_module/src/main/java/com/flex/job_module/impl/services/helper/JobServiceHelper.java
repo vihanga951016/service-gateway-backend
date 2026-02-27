@@ -14,8 +14,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -89,17 +91,46 @@ public class JobServiceHelper {
 
         if (!jobsAtPoint.isEmpty()) {
             jobAtPointRepository.deleteAll(jobsAtPoint);
+            jobAtPointRepository.flush();
         }
 
         if (job != null) {
             jobRepository.delete(job);
-            jobAtPointRepository.flush();
+            jobRepository.flush();
         }
 
         if (customer != null) {
             customerRepository.delete(customer);
             customerRepository.flush();
         }
+    }
+
+    public LocalTime freeSlotStart(List<JobAtPoint> previousJobs, ServicePoint servicePoint, Date totalServiceTime) {
+
+        LocalTime open = servicePoint.getOpenTime();
+        LocalTime close = servicePoint.getCloseTime();
+
+        LocalTime jobStart = open;
+
+        // has jobs
+        if (previousJobs != null) {
+            for (JobAtPoint job : previousJobs) {
+                // this can be null if calculated end time for total service is after the close time
+                LocalTime endTimeGoingToBe = calculateEndTime(jobStart, totalServiceTime, close);
+
+                if (endTimeGoingToBe == null) {
+                    return null;
+                }
+
+                if (endTimeGoingToBe.isBefore(job.getStartTime())) {
+                    return jobStart;
+                } else {
+                    jobStart = job.getEndTime();
+                }
+            }
+        }
+
+        return jobStart;
     }
 
 }

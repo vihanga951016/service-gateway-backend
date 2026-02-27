@@ -39,4 +39,8 @@ public class Service {
     private boolean totalPriceDepends;
     private Integer downPrice;
     private boolean deleted;
+
+    public Service(Integer id) {
+        this.id = id;
+    }
 }

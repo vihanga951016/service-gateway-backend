@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -17,5 +18,5 @@ public class PreparedJob {
     private Integer customerId;
     private String appointmentDate;
     private String appointmentTime;
-    private List<JobAtPoint> jobsAtPoint;
+    private Set<JobAtPoint> jobsAtPoint;
 }

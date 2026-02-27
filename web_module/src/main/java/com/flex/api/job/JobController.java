@@ -1,5 +1,6 @@
 package com.flex.api.job;
 
+import com.flex.job_module.api.http.requests.PointJobs;
 import com.flex.job_module.api.http.requests.PrepareJob;
 import com.flex.job_module.api.services.JobService;
 import com.flex.service_module.api.http.requests.AddCluster;
@@ -32,5 +33,11 @@ public class JobController {
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
     public ResponseEntity<?> cancelPrepare(@PathVariable Integer jobId, @PathVariable Integer customerId, HttpServletRequest request) {
         return jobService.removeDummyJob(jobId, customerId, request);
+    }
+
+    @PostMapping("/schedule")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> jobSchedule(@RequestBody PointJobs pointJobs, HttpServletRequest request) {
+        return jobService.pointWiseJobs(pointJobs, request);
     }
 }

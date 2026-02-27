@@ -52,4 +52,19 @@ public interface ServicePointRepository extends JpaRepository<ServicePoint, Inte
     BestServicePointForJob findBestServicePoint(
             @Param("serviceCenterId") Integer serviceCenterId,
             @Param("serviceId") Integer serviceId);
+
+    @Query("""
+        SELECT sp
+        FROM ServicePoint sp
+        JOIN AvailableService av ON av.servicePoint.id = sp.id
+        WHERE av.service.id IN :serviceIds
+          AND sp.deleted = false
+          AND sp.temporaryClosed = false
+        GROUP BY sp.id
+        HAVING COUNT(DISTINCT av.service.id) = :size
+    """)
+    List<ServicePoint> findServicePointsHavingAllServices(
+            @Param("serviceIds") List<Integer> serviceIds,
+            @Param("size") long size
+    );
 }
