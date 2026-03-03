@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
 import java.util.Date;
 
 @Data
@@ -20,9 +21,8 @@ public class UpdateCenterClusterService {
     private Integer downPay;
     private Integer orderNumber;
 
-    @JsonFormat(pattern = "HH:mm:ss", timezone = "Asia/Colombo")
-    @Temporal(TemporalType.TIME)
-    private Date serviceTime;
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime serviceTime;
 
     private Boolean disabled;
 

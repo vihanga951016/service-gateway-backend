@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -18,15 +20,11 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class ServicesServiceHelper {
 
-    public String formatDuration(Date time) {
-
+    public String formatDuration(LocalTime time) {
         if (time == null) return null;
 
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(time);
-
-        int hours = cal.get(Calendar.HOUR_OF_DAY);
-        int minutes = cal.get(Calendar.MINUTE);
+        int hours = time.getHour();
+        int minutes = time.getMinute();
 
         StringBuilder sb = new StringBuilder();
 
@@ -35,10 +33,10 @@ public class ServicesServiceHelper {
         }
 
         if (minutes > 0) {
-            if (!sb.isEmpty()) sb.append(" ");
+            if (sb.length() > 0) sb.append(" ");
             sb.append(minutes).append("min");
         }
 
-        return sb.isEmpty() ? "0min" : sb.toString();
+        return sb.length() == 0 ? "0min" : sb.toString();
     }
 }

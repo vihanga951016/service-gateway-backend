@@ -8,12 +8,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer> {
 
-    boolean existsByServicePointIdAndStatusIsLessThan(Integer servicePointId, Integer status);
+    @Query("SELECT j.id FROM JobAtPoint j WHERE j.servicePoint.id=:servicePointId " +
+            "AND j.job.appointmentDate=:appointmentDate AND j.status < 2")
+    List<Integer> getPendingJobAtPointIdsByPoint(@Param("servicePointId") Integer servicePointId,
+                                                 @Param("appointmentDate") LocalDate appointmentDate);
+
+    @Query("SELECT j FROM JobAtPoint j WHERE j.servicePoint.id=:servicePointId " +
+            "AND j.job.appointmentDate=:appointmentDate AND j.status < 2")
+    List<JobAtPoint> getPendingJobsAtPointByPoint(@Param("servicePointId") Integer servicePointId,
+                                                 @Param("appointmentDate") LocalDate appointmentDate);
 
     @Query("""
        SELECT j
@@ -40,11 +49,12 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
                ) AS totalServiceTime
         FROM service_point sp
         LEFT JOIN jobs_at_point jp ON jp.service_point_id = sp.id
-        WHERE sp.id IN (:points)
+        LEFT JOIN services s ON s.id = jp.service_id
+        WHERE sp.id IN (:points) AND s.id IN (:services)
         GROUP BY sp.id
         ORDER BY totalServiceTime LIMIT 1""", nativeQuery = true)
     MinimumServiceTimePoint findServicePointWithMinTotalServiceTime(
-            @Param("points") List<Integer> points);
+            @Param("points") List<Integer> points, @Param("services") List<Integer> services);
 
     @Query(value = """
         SELECT jp.id AS jobAtPointId,

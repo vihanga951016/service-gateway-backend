@@ -35,6 +35,11 @@ public class ServicePoint {
     @JsonFormat(pattern = "HH:mm")
     private LocalTime closeTime;
     private boolean temporaryClosed;
+    //this means 'delete this point at 11:59:00 pm when the last job is ended'
+    //this become true when user delete the point even has assigned but pending jobs
+    //do not load these kind service points for customer
+    //load these kind service points for admin, but not allow any modifications
+    private boolean noLongerAvailable;
     private boolean deleted;
 
     @Transient

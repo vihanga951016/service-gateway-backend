@@ -62,21 +62,18 @@ public class JobServiceHelper {
 
     }
 
-    public LocalTime calculateEndTime(LocalTime startTime, Date serviceTime, LocalTime closeTime) {
-        // convert service time(Date) to LocalDate
-        LocalTime serviceDuration =
-                ((java.sql.Time) serviceTime).toLocalTime();
+    public LocalTime calculateEndTime(LocalTime startTime, LocalTime serviceTime, LocalTime closeTime) {
 
         LocalTime endTime = startTime
-                .plusHours(serviceDuration.getHour())
-                .plusMinutes(serviceDuration.getMinute())
-                .plusSeconds(serviceDuration.getSecond());
+                .plusHours(serviceTime.getHour())
+                .plusMinutes(serviceTime.getMinute())
+                .plusSeconds(serviceTime.getSecond());
 
         if (closeTime.isAfter(endTime)) {
             return startTime
-                    .plusHours(serviceDuration.getHour())
-                    .plusMinutes(serviceDuration.getMinute())
-                    .plusSeconds(serviceDuration.getSecond());
+                    .plusHours(serviceTime.getHour())
+                    .plusMinutes(serviceTime.getMinute())
+                    .plusSeconds(serviceTime.getSecond());
         } else {
             return null;
         }
@@ -105,7 +102,7 @@ public class JobServiceHelper {
         }
     }
 
-    public LocalTime freeSlotStart(List<JobAtPoint> previousJobs, ServicePoint servicePoint, Date totalServiceTime) {
+    public LocalTime freeSlotStart(List<JobAtPoint> previousJobs, ServicePoint servicePoint, LocalTime totalServiceTime) {
 
         LocalTime open = servicePoint.getOpenTime();
         LocalTime close = servicePoint.getCloseTime();
@@ -131,6 +128,37 @@ public class JobServiceHelper {
         }
 
         return jobStart;
+    }
+
+    public LocalTime findFreeSlot(List<JobAtPoint> previousJobs, ServicePoint servicePoint, LocalTime totalServiceTime) {
+
+        LocalTime open = servicePoint.getOpenTime();
+        LocalTime close = servicePoint.getCloseTime();
+
+        LocalTime jobStart = open;
+
+        // has jobs
+        if (previousJobs != null) {
+            for (JobAtPoint job : previousJobs) {
+                if (!jobStart.equals(job.getStartTime())) {
+                    // this can be null if calculated end time for total service is after the close time
+                    LocalTime endTimeGoingToBe = calculateEndTime(jobStart, totalServiceTime, close);
+
+                    if (endTimeGoingToBe == null) {
+                        return null;
+                    }
+
+                    if (endTimeGoingToBe.isBefore(job.getStartTime())) {
+                        return jobStart;
+                    }
+                }
+
+                jobStart = job.getEndTime();
+            }
+        }
+
+        // no free slots
+        return null;
     }
 
 }

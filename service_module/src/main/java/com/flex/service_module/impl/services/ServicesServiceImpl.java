@@ -406,6 +406,10 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service not found");
         }
 
+        //todo: before delete, check pending jobs are available
+        // if yes, then noLongerAvailable is true
+        // else deleted is true
+
         service.setDeleted(true);
 
         servicesRepository.save(service);

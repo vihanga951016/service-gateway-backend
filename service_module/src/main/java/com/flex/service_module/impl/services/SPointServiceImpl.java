@@ -141,6 +141,10 @@ public class SPointServiceImpl implements ServicePointService {
             return CONFLICT("Service point not found");
         }
 
+        //todo: before delete, check pending jobs are available
+        // if yes, then noLongerAvailable is true
+        // else deleted is true
+
         servicePoint.setDeleted(true);
 
         servicePointRepository.save(servicePoint);

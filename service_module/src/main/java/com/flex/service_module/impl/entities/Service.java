@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
 import java.util.Date;
 
 /**
@@ -29,15 +30,19 @@ public class Service {
     @ManyToOne
     @JoinColumn(name = "service_provider_id")
     private ServiceProvider provider;
-    @JsonFormat(pattern = "HH:mm:ss", timezone = "Asia/Colombo")
-    @Temporal(TemporalType.TIME)
-    private Date serviceTime;
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime serviceTime;
     private boolean serviceTimeDepends;
     @Column(length = 512)
     private String description;
     private Integer totalPrice;
     private boolean totalPriceDepends;
     private Integer downPrice;
+    //this means 'delete this point at 11:59:00 pm when the last job is ended'
+    //this become true when user delete the point even has assigned but pending jobs
+    //do not load these kind service points for customer
+    //load these kind service points for admin, but not allow any modifications
+    private boolean noLongerAvailable;
     private boolean deleted;
 
     public Service(Integer id) {
