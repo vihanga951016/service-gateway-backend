@@ -148,7 +148,8 @@ public class JobServiceHelper {
                         return null;
                     }
 
-                    if (endTimeGoingToBe.isBefore(job.getStartTime())) {
+                    if (endTimeGoingToBe.isBefore(job.getStartTime())
+                            || endTimeGoingToBe.equals(job.getStartTime())) {
                         return jobStart;
                     }
                 }

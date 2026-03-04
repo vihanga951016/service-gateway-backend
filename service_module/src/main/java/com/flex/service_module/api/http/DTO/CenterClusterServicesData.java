@@ -1,5 +1,7 @@
 package com.flex.service_module.api.http.DTO;
 
+import java.time.LocalTime;
+
 public interface CenterClusterServicesData {
     Integer getId();
 
@@ -11,7 +13,7 @@ public interface CenterClusterServicesData {
 
     Integer getOrderNumber();
 
-    String getServiceTime(); // HH:mm:ss
+    LocalTime getServiceTime(); // HH:mm:ss
 
     Boolean getDisabled();
 }

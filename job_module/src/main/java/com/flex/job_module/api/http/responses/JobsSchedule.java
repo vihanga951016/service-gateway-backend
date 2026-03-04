@@ -22,4 +22,5 @@ public class JobsSchedule {
     private Integer totalTime;
     private String fromTo;
     private boolean freeSlot;
+    private boolean ignoreThis;
 }

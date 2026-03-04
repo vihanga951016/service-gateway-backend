@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalTime;
 import java.util.List;
 
 public interface AvailableServiceRepository extends JpaRepository<AvailableService,Integer> {
@@ -30,4 +31,12 @@ public interface AvailableServiceRepository extends JpaRepository<AvailableServi
 
     @Query("SELECT a.servicePoint.id FROM AvailableService a WHERE a.service.id=:serviceId AND a.servicePoint.deleted = false")
     List<Integer> pointsByService(@Param("serviceId") Integer serviceId);
+
+    @Query("""
+       SELECT MIN(s.serviceTime)
+       FROM AvailableService av
+       LEFT JOIN av.service s
+       WHERE av.servicePoint.id IN :ids
+       """)
+    LocalTime findMinimumServiceTimeByServicePointIds(@Param("ids") List<Integer> ids);
 }

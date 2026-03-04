@@ -115,6 +115,7 @@ public class JobServiceImpl implements JobService {
             }
 
             // find services from center cluster
+            // todo: reorder these services base on assigned points
             List<com.flex.service_module.impl.entities.Service> centerClusterServices = ccsRepository
                     .getServicesByCenterClusterId(prepareJob.getCenterClusterId());
 
@@ -156,6 +157,7 @@ public class JobServiceImpl implements JobService {
                 int i = 0;
 
                 for (ServicePoint servicePoint : servicePointList) {
+                    System.out.println(" ");
                     //must have service in service point
                     AvailableService availableService = availableServiceRepository
                             .availableService(centerClusterService.getId(), servicePoint.getId());
@@ -253,6 +255,7 @@ public class JobServiceImpl implements JobService {
                         } // no jobs in this service point
                     } // this service has not available in this point
                     i = i + 1;
+                    System.out.println(" ");
                 } // go to the next service point
 
                 // if statement is protecting form unnecessary jobs after broke the loop.
@@ -263,9 +266,18 @@ public class JobServiceImpl implements JobService {
                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
                         return CONFLICT("No suitable service point for " + centerClusterService.getName());
                     }
+
+                    LocalTime bestTime;
+
+                    if (minimumEndTime != null && minimumEndTime.isBefore(nextStartTime)) {
+                        bestTime = minimumEndTime;
+                    } else {
+                        bestTime = nextStartTime;
+                    }
+
                     JobAtPoint createJobAtPoint = jobServiceHelper
                             .createJobAtPoint(suitablePoint, centerClusterService, job,
-                                    nextStartTime, true);
+                                    bestTime, true);
 
                     if (createJobAtPoint != null) {
                         jobAtPointRepository.save(createJobAtPoint);
@@ -359,8 +371,6 @@ public class JobServiceImpl implements JobService {
                             .getPendingJobsAtPointByPoint(lowestServiceTimePoint.getServicePointId(),
                                     prepareJob.getAppointmentDate());
 
-                    log.info(Colors.YELLOW + "best point: " + previousJobsAtSuitablePoint + Colors.RESET);
-
                     if (previousJobsAtSuitablePoint == null || previousJobsAtSuitablePoint.isEmpty()) {
                         freeSlot = bestPoint.getOpenTime();
                     } else {
@@ -385,6 +395,7 @@ public class JobServiceImpl implements JobService {
                         jobAtPointRepository.save(createJobAtPoint);
                     } else {
                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                        log.info(Colors.YELLOW + "4" + Colors.RESET);
                         return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                     }
 
@@ -441,6 +452,7 @@ public class JobServiceImpl implements JobService {
                                         jobAtPointRepository.save(createJobAtPoint);
                                     } else {
                                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                                        log.info(Colors.YELLOW + "5" + Colors.RESET);
                                         return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                                     }
 
@@ -482,6 +494,7 @@ public class JobServiceImpl implements JobService {
                                     jobAtPointRepository.save(createJobAtPoint);
                                 } else {
                                     jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                                    log.info(Colors.YELLOW + "6" + Colors.RESET);
                                     return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                                 }
 
@@ -508,6 +521,7 @@ public class JobServiceImpl implements JobService {
                         jobAtPointRepository.save(createJobAtPoint);
                     } else {
                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                        log.info(Colors.YELLOW + "7" + Colors.RESET);
                         return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                     }
 
@@ -578,6 +592,10 @@ public class JobServiceImpl implements JobService {
 
         if (!servicePoints.isEmpty()) {
 
+            List<Integer> spIds = servicePoints.stream().map(ServicePoint::getId).toList();
+
+            LocalTime minimumServiceTime = availableServiceRepository.findMinimumServiceTimeByServicePointIds(spIds);
+
             int id = 1;
 
             for (ServicePoint servicePoint : servicePoints) {
@@ -617,6 +635,8 @@ public class JobServiceImpl implements JobService {
                                     .between(lastEndTime, jobTimelineProjection.getStartTime())
                                     .getSeconds();
 
+                            boolean ignoreThis = freeTimeDurationFromSec <= minimumServiceTime.toSecondOfDay();
+
                             double freeTimePercent =
                                     (freeTimeDurationFromSec * 100.0)
                                             / servicePointOpeningDurationBySec;
@@ -629,6 +649,7 @@ public class JobServiceImpl implements JobService {
                                     .totalTime(freeTimeDurationFromPercent)
                                     .fromTo(lastEndTime + " - " + jobTimelineProjection.getStartTime())
                                     .freeSlot(true)
+                                    .ignoreThis(ignoreThis)
                                     .build();
                             id++;
 
@@ -705,6 +726,8 @@ public class JobServiceImpl implements JobService {
                                         (freeTimeDurationFromSec * 100.0)
                                                 / servicePointOpeningDurationBySec;
 
+                                boolean ignoreThis = freeTimeDurationFromSec <= minimumServiceTime.toSecondOfDay();
+
                                 int freeTimeDurationFromPercent = (int) Math.round(freeTimePercent);
 
                                 JobsSchedule freeSlot = JobsSchedule.builder()
@@ -713,6 +736,7 @@ public class JobServiceImpl implements JobService {
                                         .totalTime(freeTimeDurationFromPercent)
                                         .fromTo(lastEndTime + " - " + servicePoint.getCloseTime())
                                         .freeSlot(true)
+                                        .ignoreThis(ignoreThis)
                                         .build();
 
                                 jobsSchedules.add(freeSlot);

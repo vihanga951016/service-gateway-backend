@@ -49,8 +49,8 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
                ) AS totalServiceTime
         FROM service_point sp
         LEFT JOIN jobs_at_point jp ON jp.service_point_id = sp.id
-        LEFT JOIN services s ON s.id = jp.service_id
-        WHERE sp.id IN (:points) AND s.id IN (:services)
+        LEFT JOIN available_services av ON av.service_point_id = sp.id
+        WHERE sp.id IN (:points) AND av.service_id IN (:services)
         GROUP BY sp.id
         ORDER BY totalServiceTime LIMIT 1""", nativeQuery = true)
     MinimumServiceTimePoint findServicePointWithMinTotalServiceTime(
