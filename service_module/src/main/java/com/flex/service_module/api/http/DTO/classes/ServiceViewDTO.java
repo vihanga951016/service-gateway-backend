@@ -10,6 +10,7 @@ import java.util.Date;
 @Builder
 public class ServiceViewDTO {
     private Integer id;
+    private Integer orderNumber;
     private String name;
     private String description;
     private LocalTime serviceTime;

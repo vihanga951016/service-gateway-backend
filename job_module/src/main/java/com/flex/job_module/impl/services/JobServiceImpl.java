@@ -65,7 +65,7 @@ public class JobServiceImpl implements JobService {
     @Transactional
     @Override
     public ResponseEntity<?> prepareJob(PrepareJob prepareJob, HttpServletRequest request) {
-
+        log.info(request.getRequestURI());
         ServiceCenter serviceCenter = serviceCenterRepository.findByIdAndDeletedIsFalse(prepareJob.getServiceCenterId());
 
         if (serviceCenter == null) {
@@ -77,6 +77,16 @@ public class JobServiceImpl implements JobService {
         if (servicePointList.isEmpty()) {
             return CONFLICT("Service points not found");
         }
+
+        // this take as all service points are empty at the start, this is using to address the nextStartTime issue
+        // for empty service points.
+        // * if the service point has no jobs, the nextStartTime must be equal to the last created jobs end time
+        List<Integer> emptyServicePoints =
+                new ArrayList<>(
+                        servicePointList.stream()
+                                .map(ServicePoint::getId)
+                                .toList()
+                );
 
         Customer customer = customerRepository.findByPhone(prepareJob.getPhone());
 
@@ -108,6 +118,8 @@ public class JobServiceImpl implements JobService {
 
         if (prepareJob.getCenterClusterId() != null) {
 
+            log.info(" -- cluster through -- ");
+
             if (!centerClusterRepository.existsById(prepareJob.getCenterClusterId())) {
                 jobRepository.delete(job);
                 customerRepository.delete(customer);
@@ -115,7 +127,6 @@ public class JobServiceImpl implements JobService {
             }
 
             // find services from center cluster
-            // todo: reorder these services base on assigned points
             List<com.flex.service_module.impl.entities.Service> centerClusterServices = ccsRepository
                     .getServicesByCenterClusterId(prepareJob.getCenterClusterId());
 
@@ -136,17 +147,6 @@ public class JobServiceImpl implements JobService {
             // this will save all next start times. using for get the appointment time
             List<LocalTime> allStartTimes = new ArrayList<>();
 
-            // this take as all service points are empty at the start, this is using to address the nextStartTime issue
-            // for empty service points.
-            // * if the service point has no jobs, the nextStartTime must be equal to the last created jobs end time or
-            // *
-            List<Integer> emptyServicePoints =
-                    new ArrayList<>(
-                            servicePointList.stream()
-                                    .map(ServicePoint::getId)
-                                    .toList()
-                    );
-
             // loop services and check create the job at point
             for (com.flex.service_module.impl.entities.Service centerClusterService : centerClusterServices) {
                 long minimumServiceTimeFromSec = 86400;
@@ -155,9 +155,10 @@ public class JobServiceImpl implements JobService {
 
                 // this is using for avoid create other jobs after breaking the loop. check the usage
                 int i = 0;
-
+                log.info(" ");
+                log.info("{}service: {}{}", Colors.YELLOW, centerClusterService.getName(), Colors.RESET);
                 for (ServicePoint servicePoint : servicePointList) {
-                    System.out.println(" ");
+                    log.info("{}point: {}{}", Colors.YELLOW, servicePoint.getName(), Colors.RESET);
                     //must have service in service point
                     AvailableService availableService = availableServiceRepository
                             .availableService(centerClusterService.getId(), servicePoint.getId());
@@ -177,12 +178,14 @@ public class JobServiceImpl implements JobService {
 
                                 nextStartTime = previousJobs.getLast().getEndTime();
                                 allStartTimes.add(nextStartTime);
-
                                 JobAtPoint createJobAtPoint = jobServiceHelper
                                         .createJobAtPoint(servicePoint, centerClusterService, job,
                                                 nextStartTime, true);
-
                                 if (createJobAtPoint != null) {
+                                    log.info("point: {}", servicePoint.getName() + " ✅");
+                                    log.info("job start time: {}" ,nextStartTime);
+                                    log.info("job end time: {}", createJobAtPoint.getEndTime());
+                                    log.info("Chosen by: has prev jobs in this point");
                                     jobAtPointRepository.save(createJobAtPoint);
                                 } else {
                                     jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -190,6 +193,8 @@ public class JobServiceImpl implements JobService {
                                 }
 
                                 jobsAtPoint.add(createJobAtPoint);
+                                nextStartTime = createJobAtPoint.getEndTime();
+                                log.info("next start time going to be: {}", nextStartTime);
                                 break;
                             } else {
                                 //find the total service time of all jobs.
@@ -238,6 +243,10 @@ public class JobServiceImpl implements JobService {
                                             nextStartTime, true);
 
                             if (createJobAtPoint != null) {
+                                log.info("point: {}", servicePoint.getName() + " ✅");
+                                log.info("job start time: {}" ,nextStartTime);
+                                log.info("job end time: {}", createJobAtPoint.getEndTime());
+                                log.info("Chosen by: no prev jobs in this point");
                                 jobAtPointRepository.save(createJobAtPoint);
                             } else {
                                 jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -251,11 +260,11 @@ public class JobServiceImpl implements JobService {
                             jobAtPointRepository.save(createJobAtPoint);
 
                             jobsAtPoint.add(createJobAtPoint);
+                            log.info("next start time going to be: {}", nextStartTime);
                             break;
                         } // no jobs in this service point
                     } // this service has not available in this point
                     i = i + 1;
-                    System.out.println(" ");
                 } // go to the next service point
 
                 // if statement is protecting form unnecessary jobs after broke the loop.
@@ -280,6 +289,10 @@ public class JobServiceImpl implements JobService {
                                     bestTime, true);
 
                     if (createJobAtPoint != null) {
+                        log.info("point: {}", suitablePoint.getName() + " ✅");
+                        log.info("job start time: {}" ,bestTime);
+                        log.info("job end time: {}", createJobAtPoint.getEndTime());
+                        log.info("Chosen by: minimum service time check");
                         jobAtPointRepository.save(createJobAtPoint);
                     } else {
                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -287,11 +300,13 @@ public class JobServiceImpl implements JobService {
                     }
 
                     nextStartTime = createJobAtPoint.getEndTime();
+                    log.info("next start time going to be: {}", nextStartTime);
                     allStartTimes.add(nextStartTime);
                     jobAtPointRepository.save(createJobAtPoint);
 
                     jobsAtPoint.add(createJobAtPoint);
                 }
+                log.info(" ");
             }
 
             LocalTime appointmentTime = null;
@@ -308,6 +323,10 @@ public class JobServiceImpl implements JobService {
                     .jobsAtPoint(jobsAtPoint).build());
 
         } else {
+
+            log.info(" ");
+            log.info(" -- custom services -- ");
+
             if (prepareJob.getServicesIds().isEmpty()) {
                 jobServiceHelper.clearDummyData(customer.getId(), job.getId());
                 return CONFLICT("Choose services first");
@@ -328,6 +347,8 @@ public class JobServiceImpl implements JobService {
 
             if (!points.isEmpty()) {
 
+                log.info(" -- all services has some point/points -- ");
+
                 // calculate the total service time for custom services
                 long totalSeconds = services.stream()
                         .filter(s -> s.getServiceTime() != null)
@@ -336,6 +357,9 @@ public class JobServiceImpl implements JobService {
 
                 // convert seconds to Date type
                 LocalTime totalServiceTime = LocalTime.ofSecondOfDay(totalSeconds);
+
+                log.info(" ");
+                log.info("total service time: {} ", totalServiceTime);
 
                 LocalTime freeSlot = null;
                 ServicePoint bestPoint = null;
@@ -349,6 +373,7 @@ public class JobServiceImpl implements JobService {
                     freeSlot = jobServiceHelper.findFreeSlot(previousJobs, servicePoint, totalServiceTime);
 
                     if (freeSlot != null) {
+                        log.info("found free slot among jobs ✅");
                         bestPoint = servicePoint;
                         break;
                     }
@@ -372,11 +397,23 @@ public class JobServiceImpl implements JobService {
                                     prepareJob.getAppointmentDate());
 
                     if (previousJobsAtSuitablePoint == null || previousJobsAtSuitablePoint.isEmpty()) {
+                        log.info("found free slot in empty point ✅");
                         freeSlot = bestPoint.getOpenTime();
                     } else {
+                        log.info("assign job to point which has the lowest service time ✅");
+                        for (JobAtPoint jobAtPoint: previousJobsAtSuitablePoint) {
+                            log.info("job: {}", jobAtPoint.getService().getName());
+                            log.info("start time: {}", jobAtPoint.getStartTime());
+                            log.info("end time: {}", jobAtPoint.getEndTime());
+                            log.info("last job id: {}", jobAtPoint.getJob().getId());
+                            log.info("job id: {}", job.getId());
+                        }
                         freeSlot = previousJobsAtSuitablePoint.getLast().getEndTime();
                     }
                 }
+
+                log.info("free slot start time: {} ", freeSlot);
+                log.info("chosen point: {} ", bestPoint.getName() + " ✅");
 
                 if (freeSlot == null) {
                     jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -387,11 +424,16 @@ public class JobServiceImpl implements JobService {
 
                 //loop services and create job at point dummy list.
                 for (com.flex.service_module.impl.entities.Service service: services) {
+
+                    log.info(" ");
+                    log.info("service: {}", service.getName());
                     JobAtPoint createJobAtPoint = jobServiceHelper
                             .createJobAtPoint(bestPoint, service, job,
                                     nextStartTime, true);
 
                     if (createJobAtPoint != null) {
+                        log.info("start time: {}", nextStartTime);
+                        log.info("end time: {}", createJobAtPoint.getEndTime());
                         jobAtPointRepository.save(createJobAtPoint);
                     } else {
                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -404,6 +446,8 @@ public class JobServiceImpl implements JobService {
 
                     nextStartTime = jobServiceHelper.calculateEndTime(nextStartTime,
                             service.getServiceTime(), bestPoint.getCloseTime());
+                    log.info("next start time going to be: {}", nextStartTime);
+                    log.info(" ");
                 }
 
                 //custom services completed
@@ -415,15 +459,22 @@ public class JobServiceImpl implements JobService {
                         .jobsAtPoint(jobsAtPoint).build());
 
             } else {
-                log.info("{} 2 {}",Colors.YELLOW,Colors.RESET);
+                log.info(" ");
+                log.info(" -- services are in different points -- ");
                 LocalTime minimumStartTime = serviceCenter.getCloseTime();
 
+                LocalTime nextStartTime = serviceCenter.getOpenTime();
+
                 for (com.flex.service_module.impl.entities.Service service : services) {
+                    log.info(" ");
+                    log.info("{}service: {}{}", Colors.YELLOW, service.getName(), Colors.RESET);
+                    int i = 0;
                     long minimumServiceTimeFromSec = 86400;
                     ServicePoint suitablePoint = servicePointList.getFirst();
-                    List<JobAtPoint> previousJobsAtSuitablePoint = null;
 
                     for (ServicePoint servicePoint : servicePointList) {
+
+                        log.info("{}service point: {}{}", Colors.YELLOW, servicePoint.getName(), Colors.RESET);
                         AvailableService availableService = availableServiceRepository
                                 .availableService(service.getId(), servicePoint.getId());
 
@@ -434,7 +485,6 @@ public class JobServiceImpl implements JobService {
 
                             // has previous jobs in this point
                             if (!previousJobs.isEmpty()) {
-                                log.info("{} service: {}, point: {}, has other jobs {}",Colors.YELLOW,service.getName(), servicePoint.getName(),Colors.RESET);
                                 List<Integer> prevJobIds = previousJobs.stream().map(
                                         j -> j.getJob().getId()
                                 ).toList();
@@ -442,13 +492,18 @@ public class JobServiceImpl implements JobService {
                                 // has contains current job id in previous jobs
                                 if (prevJobIds.contains(job.getId())) {
                                     // if has create the dummy entity and break the loop
-                                    LocalTime nextStartTime = previousJobs.getLast().getEndTime();
+                                    nextStartTime = previousJobs.getLast().getEndTime();
 
                                     JobAtPoint createJobAtPoint = jobServiceHelper
                                             .createJobAtPoint(servicePoint, service, job,
                                                     nextStartTime, true);
 
                                     if (createJobAtPoint != null) {
+                                        log.info("point: {}", servicePoint.getName() + " ✅");
+                                        log.info("service time: {}", service.getServiceTime());
+                                        log.info("job start time: {}" ,nextStartTime);
+                                        log.info("job end time: {}", createJobAtPoint.getEndTime());
+                                        log.info("Chosen by: has prev jobs in this point");
                                         jobAtPointRepository.save(createJobAtPoint);
                                     } else {
                                         jobServiceHelper.clearDummyData(customer.getId(), job.getId());
@@ -456,13 +511,17 @@ public class JobServiceImpl implements JobService {
                                         return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                                     }
 
-                                    if (nextStartTime.isBefore(minimumStartTime)) {
-                                        minimumStartTime = nextStartTime;
+                                    if (nextStartTime.isBefore(previousJobs.getLast().getEndTime())) {
+                                        log.info("nextStartTime: {}", nextStartTime);
+
+                                        nextStartTime = previousJobs.getLast().getEndTime();
+                                        log.info("end: {}", nextStartTime);
                                     }
 
                                     jobAtPointRepository.save(createJobAtPoint);
                                     jobsAtPoint.add(createJobAtPoint);
-
+                                    log.info("next start time going to be: {}", nextStartTime);
+                                    break;
                                 } else {
                                     // if not save the total job time along with the min service time point id
                                     //      and jump to next iteration(continue).
@@ -473,64 +532,71 @@ public class JobServiceImpl implements JobService {
                                             .sum();
 
                                     if (totalSeconds < minimumServiceTimeFromSec) {
-                                        log.info("{} total:{} {}",Colors.YELLOW, totalSeconds,Colors.RESET);
                                         minimumServiceTimeFromSec = totalSeconds;
                                         suitablePoint = servicePoint;
-                                        previousJobsAtSuitablePoint = previousJobs;
+                                        nextStartTime = previousJobs.getLast().getEndTime();
                                     }
-
-                                    log.info("{} previous job end time:{} {}",Colors.YELLOW, previousJobs.getLast().getEndTime(),Colors.RESET);
                                 }
 
                             } else {
                                 //  no previous jobs which means this is the better point, create the new entity and break the loop
-                                LocalTime nextStartTime = servicePoint.getOpenTime();
 
                                 JobAtPoint createJobAtPoint = jobServiceHelper
                                         .createJobAtPoint(servicePoint, service, job,
                                                 nextStartTime, true);
 
                                 if (createJobAtPoint != null) {
+                                    log.info("point: {}", servicePoint.getName() + " ✅");
+                                    log.info("service time: {}", service.getServiceTime());
+                                    log.info("job start time: {}" ,nextStartTime);
+                                    log.info("job end time: {}", createJobAtPoint.getEndTime());
+                                    log.info("Chosen by: no prev jobs in this point");
                                     jobAtPointRepository.save(createJobAtPoint);
                                 } else {
                                     jobServiceHelper.clearDummyData(customer.getId(), job.getId());
-                                    log.info(Colors.YELLOW + "6" + Colors.RESET);
                                     return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
                                 }
 
-                                if (nextStartTime.isBefore(minimumStartTime)) {
-                                    minimumStartTime = nextStartTime;
-                                }
+                                nextStartTime = jobServiceHelper.calculateEndTime(nextStartTime,
+                                        service.getServiceTime(), servicePoint.getCloseTime());
 
-                                jobAtPointRepository.save(createJobAtPoint);
                                 jobsAtPoint.add(createJobAtPoint);
+                                log.info("next start time going to be: {}", nextStartTime);
+                                break;
                             }
                         } //to next service point
+                        i = i + 1;
                     }
 
-                    // now you have the best point for this service, now you can find the best time slot for this service
-                    // create the entity now. start time going to be best time slot start time.
-                    LocalTime nextStartTime = jobServiceHelper
-                            .freeSlotStart(previousJobsAtSuitablePoint, suitablePoint, service.getServiceTime());
+                    if (servicePointList.size() == i) {
 
-                    JobAtPoint createJobAtPoint = jobServiceHelper
-                            .createJobAtPoint(suitablePoint, service, job,
-                                    nextStartTime, true);
+                        JobAtPoint createJobAtPoint = jobServiceHelper
+                                .createJobAtPoint(suitablePoint, service, job,
+                                        nextStartTime, true);
 
-                    if (createJobAtPoint != null) {
+                        if (createJobAtPoint != null) {
+                            log.info("point: {}", suitablePoint.getName() + " ✅");
+                            log.info("service time: {}", service.getServiceTime());
+                            log.info("job start time: {}" ,nextStartTime);
+                            log.info("job end time: {}", createJobAtPoint.getEndTime());
+                            log.info("Chosen by: minimum service time check");
+                            jobAtPointRepository.save(createJobAtPoint);
+                        } else {
+                            jobServiceHelper.clearDummyData(customer.getId(), job.getId());
+                            return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
+                        }
+
+                        nextStartTime = createJobAtPoint.getEndTime();
+
+                        if (nextStartTime.isBefore(minimumStartTime)) {
+                            minimumStartTime = nextStartTime;
+                        }
+
                         jobAtPointRepository.save(createJobAtPoint);
-                    } else {
-                        jobServiceHelper.clearDummyData(customer.getId(), job.getId());
-                        log.info(Colors.YELLOW + "7" + Colors.RESET);
-                        return CONFLICT("Sorry, No available service slots for " + prepareJob.getAppointmentDate());
+                        jobsAtPoint.add(createJobAtPoint);
+                        log.info("next start time going to be: {}", nextStartTime);
                     }
-
-                    if (nextStartTime.isBefore(minimumStartTime)) {
-                        minimumStartTime = nextStartTime;
-                    }
-
-                    jobAtPointRepository.save(createJobAtPoint);
-                    jobsAtPoint.add(createJobAtPoint);
+                    log.info(" ");
                 }
 
                 //custom services completed

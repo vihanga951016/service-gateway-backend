@@ -20,7 +20,7 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
                                                  @Param("appointmentDate") LocalDate appointmentDate);
 
     @Query("SELECT j FROM JobAtPoint j WHERE j.servicePoint.id=:servicePointId " +
-            "AND j.job.appointmentDate=:appointmentDate AND j.status < 2")
+            "AND j.job.appointmentDate=:appointmentDate AND j.status < 2 ORDER BY j.startTime")
     List<JobAtPoint> getPendingJobsAtPointByPoint(@Param("servicePointId") Integer servicePointId,
                                                  @Param("appointmentDate") LocalDate appointmentDate);
 

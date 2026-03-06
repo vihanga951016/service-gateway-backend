@@ -21,7 +21,11 @@ public interface ServicesRepository extends JpaRepository<Service, Integer> {
 
     Service findByIdAndDeletedIsFalse(Integer id);
 
-    List<Service> findAllByProvider_IdAndDeletedIsFalse(Integer providerId);
+    List<Service> findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumber(Integer providerId);
+
+    List<Service> findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumberAsc(Integer providerId);
+
+    Service findByProvider_IdAndOrderNumberAndDeletedIsFalse(Integer providerId, Integer orderNumber);
 
     @Query("SELECT s.id as id, s.name as name, s.serviceTime as time, s.totalPrice as totalPrice, s.downPrice as downPrice " +
             "FROM Service s WHERE s.provider.id=:providerId AND s.deleted = false ")
@@ -38,7 +42,7 @@ public interface ServicesRepository extends JpaRepository<Service, Integer> {
                     "     :searchText IS NULL " +
                     "     OR :searchText = '' " +
                     "     OR LOWER(s.name) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-                    ")"
+                    ") ORDER BY s.orderNumber ASC "
     )
     Page<Service> findAllWithSearch(
             @Param("providerId") Integer providerId,

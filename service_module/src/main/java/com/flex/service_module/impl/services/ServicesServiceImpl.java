@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.flex.common_module.http.ReturnResponse.*;;
@@ -47,7 +48,8 @@ public class ServicesServiceImpl implements ServicesService {
     private final ServiceCenterRepository serviceCenterRepository;
 
     @Override
-    public ResponseEntity<?> addService(com.flex.service_module.impl.entities.Service service, HttpServletRequest request) {
+    public ResponseEntity<?> addService(com.flex.service_module.impl.entities.Service service,
+            HttpServletRequest request) {
         log.info(request.getRequestURI());
 
         UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
@@ -63,10 +65,18 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service provider not found");
         }
 
+        List<com.flex.service_module.impl.entities.Service> serviceList = servicesRepository
+                .findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumberAsc(provider.getId());
+
+        int orderNumber = 1;
+
+        if (!serviceList.isEmpty()) {
+            orderNumber = serviceList.getLast().getOrderNumber() + 1;
+        }
+
         // 🔒 Check duplicate service name
         if (servicesRepository.existsByNameAndProvider_IdAndDeletedIsFalse(
-                service.getName(), provider.getId()
-        )) {
+                service.getName(), provider.getId())) {
             return CONFLICT("Service already exists");
         }
 
@@ -80,6 +90,7 @@ public class ServicesServiceImpl implements ServicesService {
         }
 
         // 🧠 Set system-managed fields
+        service.setOrderNumber(orderNumber);
         service.setProvider(provider);
         service.setDeleted(false);
 
@@ -89,7 +100,8 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
-    public ResponseEntity<?> updateService(com.flex.service_module.impl.entities.Service service, HttpServletRequest request) {
+    public ResponseEntity<?> updateService(com.flex.service_module.impl.entities.Service service,
+            HttpServletRequest request) {
         log.info(request.getRequestURI());
 
         UserClaims userClaims = JwtUtil.getClaimsFromToken(request);
@@ -125,8 +137,7 @@ public class ServicesServiceImpl implements ServicesService {
                 && !service.getName().equals(existing.getName())) {
 
             if (servicesRepository.existsByNameAndProvider_IdAndDeletedIsFalseAndIdNot(
-                    service.getName(), provider.getId(), existing.getId()
-            )) {
+                    service.getName(), provider.getId(), existing.getId())) {
                 return CONFLICT("Service name already exists");
             }
 
@@ -167,13 +178,37 @@ public class ServicesServiceImpl implements ServicesService {
             updated = true;
         }
 
-        if (existing.isServiceTimeDepends() != service.isServiceTimeDepends()) {
-            existing.setServiceTimeDepends(service.isServiceTimeDepends());
-            updated = true;
+        // ✅ Update order number
+        if (service.getOrderNumber() != null && !service.getOrderNumber().equals(existing.getOrderNumber())) {
+
+            int orderNumber = existing.getOrderNumber();
+
+            List<com.flex.service_module.impl.entities.Service> serviceList = servicesRepository
+                    .findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumberAsc(provider.getId());
+
+            if (!serviceList.isEmpty()) {
+                if (service.getOrderNumber() <= serviceList.getLast().getOrderNumber()) {
+                    com.flex.service_module.impl.entities.Service orderedService = servicesRepository
+                            .findByProvider_IdAndOrderNumberAndDeletedIsFalse(provider.getId(),
+                                    service.getOrderNumber());
+
+                    if (orderedService == null) {
+                        orderNumber = service.getOrderNumber();
+                    } else {
+                        int temp = orderedService.getOrderNumber();
+                        orderedService.setOrderNumber(orderNumber);
+                        servicesRepository.save(orderedService);
+                        orderNumber = temp;
+                    }
+
+                    existing.setOrderNumber(orderNumber);
+                    updated = true;
+                }
+            }
         }
 
-        if (existing.isTotalPriceDepends() != service.isTotalPriceDepends()) {
-            existing.setTotalPriceDepends(service.isTotalPriceDepends());
+        if (existing.isFreeService() != service.isFreeService()) {
+            existing.setFreeService(service.isFreeService());
             updated = true;
         }
 
@@ -209,23 +244,30 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service point not found");
         }
 
-        List<AvailableService> assignedServices = availableServiceRepository.findAllByServicePointId(servicePointId);
+        List<com.flex.service_module.impl.entities.Service> allServices = servicesRepository
+                .findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumber(provider.getId());
 
-        List<Integer> unavailableServicesIds = assignedServices.stream().map(s -> s.getService().getId())
+        List<com.flex.service_module.impl.entities.Service> assignedServices = availableServiceRepository.servicesInPoint(servicePointId);
+
+        if (!assignedServices.isEmpty()) {
+
+            // remove unassigned services before first assigned service
+            int assignedFirstOrderNumber = assignedServices.getFirst().getOrderNumber();
+
+            List<com.flex.service_module.impl.entities.Service> assignedAndUnassigned = allServices
+                    .subList(assignedFirstOrderNumber, allServices.size());
+
+            List<Integer> unavailableServicesIds = assignedServices.stream()
+                    .map(com.flex.service_module.impl.entities.Service::getId)
                 .toList();
 
-        List<com.flex.service_module.impl.entities.Service> allServices = servicesRepository
-                .findAllByProvider_IdAndDeletedIsFalse(provider.getId());
+            List<com.flex.service_module.impl.entities.Service> availableServices = assignedAndUnassigned.stream().filter(
+                s -> !unavailableServicesIds.contains(s.getId())).toList();
 
-        if (allServices == null || allServices.isEmpty()) {
-            return CONFLICT("No available services");
+            return DATA(availableServices);
+        } else {
+            return DATA(allServices);
         }
-
-        List<com.flex.service_module.impl.entities.Service> availableServices = allServices.stream().filter(
-                s -> !unavailableServicesIds.contains(s.getId())
-        ).toList();
-
-        return DATA(availableServices);
     }
 
     @Override
@@ -251,13 +293,10 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service point not found");
         }
 
-        List<AvailableService> assignedServices = availableServiceRepository.findAllByServicePointId(servicePointId);
+        List<com.flex.service_module.impl.entities.Service> assignedServices
+                = availableServiceRepository.servicesInPoint(servicePointId);
 
-        return DATA(
-                assignedServices.stream().map(
-                        AvailableService::getService
-                ).toList()
-        );
+        return DATA(assignedServices);
     }
 
     @Override
@@ -272,7 +311,8 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
-    public ResponseEntity<?> assignServicesForPoint(AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+    public ResponseEntity<?> assignServicesForPoint(AssignServiceToPoint assignServiceToPoint,
+            HttpServletRequest request) {
         log.info(request.getRequestURI());
 
         ServicePoint servicePoint = servicePointRepository
@@ -282,11 +322,28 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service point not found");
         }
 
+        List<com.flex.service_module.impl.entities.Service> availableServices = availableServiceRepository
+                .servicesInPoint(servicePoint.getId());
+
         com.flex.service_module.impl.entities.Service service = servicesRepository
                 .findByIdAndDeletedIsFalse(assignServiceToPoint.getServiceId());
 
         if (service == null) {
             return CONFLICT("Service not found");
+        }
+
+        if (!availableServices.isEmpty()) {
+            boolean orderFine = false;
+            int lastOrderNumber = service.getOrderNumber();
+
+            // order number must 6 last number must 5
+            if (lastOrderNumber - 1 == availableServices.getLast().getOrderNumber()) {
+                orderFine = true;
+            }
+
+            if (!orderFine) {
+                return CONFLICT("You must stick with the order");
+            }
         }
 
         AvailableService availableService = AvailableService.builder()
@@ -300,7 +357,8 @@ public class ServicesServiceImpl implements ServicesService {
     }
 
     @Override
-    public ResponseEntity<?> removeServicesFromPoint(AssignServiceToPoint assignServiceToPoint, HttpServletRequest request) {
+    public ResponseEntity<?> removeServicesFromPoint(AssignServiceToPoint assignServiceToPoint,
+            HttpServletRequest request) {
         log.info(request.getRequestURI());
 
         ServicePoint servicePoint = servicePointRepository
@@ -317,7 +375,8 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service not found");
         }
 
-        AvailableService availableService = availableServiceRepository.availableService(service.getId(), servicePoint.getId());
+        AvailableService availableService = availableServiceRepository.availableService(service.getId(),
+                servicePoint.getId());
 
         if (availableService == null) {
             return CONFLICT("This service is not assigned to this point");
@@ -350,30 +409,26 @@ public class ServicesServiceImpl implements ServicesService {
         Pageable pageable = PageRequest.of(
                 pagination.getPage(),
                 pagination.getSize(),
-                sort
-        );
+                sort);
 
         Page<com.flex.service_module.impl.entities.Service> result = servicesRepository.findAllWithSearch(
                 provider.getId(),
                 pagination.getSearchText() == null
                         ? null
                         : pagination.getSearchText().trim(),
-                pageable
-        );
+                pageable);
 
         return DATA(
                 result.map(s -> ServiceViewDTO.builder()
                         .id(s.getId())
+                        .orderNumber(s.getOrderNumber())
                         .name(s.getName())
                         .description(s.getDescription())
                         .serviceTime(s.getServiceTime())
-                        .serviceTimeDepends(s.isServiceTimeDepends())
                         .fServiceTime(servicesServiceHelper.formatDuration(s.getServiceTime()))
                         .totalPrice(s.getTotalPrice())
-                        .totalPriceDepends(s.isTotalPriceDepends())
                         .downPrice(s.getDownPrice())
-                        .build())
-        );
+                        .build()));
     }
 
     @Override
@@ -406,7 +461,28 @@ public class ServicesServiceImpl implements ServicesService {
             return CONFLICT("Service not found");
         }
 
-        //todo: before delete, check pending jobs are available
+        List<com.flex.service_module.impl.entities.Service> serviceList = servicesRepository
+                .findAllByProvider_IdAndDeletedIsFalseOrderByOrderNumberAsc(service.getProvider().getId());
+
+        int orderNumber = service.getOrderNumber();
+
+        List<com.flex.service_module.impl.entities.Service> orderedServices = serviceList
+                .subList(orderNumber, serviceList.size());
+
+        if (!orderedServices.isEmpty()) {
+            orderNumber = orderNumber - 1;
+            List<com.flex.service_module.impl.entities.Service> reorderedServices = new ArrayList<>();
+
+            for (com.flex.service_module.impl.entities.Service reorder : orderedServices) {
+                reorder.setOrderNumber(orderNumber + 1);
+
+                reorderedServices.add(reorder);
+            }
+
+            servicesRepository.saveAll(reorderedServices);
+        }
+
+        // todo: before delete, check pending jobs are available
         // if yes, then noLongerAvailable is true
         // else deleted is true
 

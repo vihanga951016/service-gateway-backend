@@ -19,6 +19,6 @@ public interface CCSRepository extends JpaRepository<CenterClusterServices, Inte
             "c.serviceTime as serviceTime, c.disabled as disabled FROM CenterClusterServices c WHERE c.centerCluster.id=:ccId ORDER BY c.orderNumber ASC")
     List<CenterClusterServicesData> centerClusterServicesData(@Param("ccId") Integer ccId);
 
-    @Query("SELECT c.service FROM CenterClusterServices c WHERE c.centerCluster.id=:ccId ORDER BY c.orderNumber asc")
+    @Query("SELECT c.service FROM CenterClusterServices c WHERE c.centerCluster.id=:ccId ORDER BY c.service.orderNumber asc")
     List<Service> getServicesByCenterClusterId(@Param("ccId") Integer ccId);
 }
