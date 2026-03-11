@@ -8,3 +8,4 @@ insert into permissions(permission) value ('Services Management');
 insert into permissions(permission) value ('Center Employee M.');
 insert into permissions(permission) value ('Points Management');
 insert into permissions(permission) value ('Cluster Management');
+insert into permissions(permission) value ('Holiday Management');

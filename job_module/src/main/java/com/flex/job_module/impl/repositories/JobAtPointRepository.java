@@ -3,7 +3,9 @@ package com.flex.job_module.impl.repositories;
 import com.flex.job_module.api.http.DTO.JobTimelineProjection;
 import com.flex.job_module.api.http.DTO.MinimumServiceTimePoint;
 import com.flex.job_module.impl.entities.JobAtPoint;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +15,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer> {
+
+    @Query("SELECT j.id FROM JobAtPoint j WHERE j.createdDate=:date AND j.dummyEntity = true")
+    List<Integer> getDummyJobIds(@Param("date") LocalDate date);
 
     @Query("SELECT j.id FROM JobAtPoint j WHERE j.servicePoint.id=:servicePointId " +
             "AND j.job.appointmentDate=:appointmentDate AND j.status < 2")
@@ -86,4 +91,14 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
             @Param("servicePointId") Integer servicePointId,
             @Param("appointmentDate") LocalDate appointmentDate
     );
+
+    @Query("""
+        SELECT j
+        FROM JobAtPoint j
+        WHERE j.dummyEntity = true
+        AND (j.createdDate > :date
+             OR (j.createdDate = :date AND j.createdTime < :time))
+    """)
+    List<JobAtPoint> findExpiredDummy(LocalDate date, LocalTime time);
+
 }

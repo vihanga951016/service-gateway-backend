@@ -12,4 +12,6 @@ public interface JobService {
     ResponseEntity<?> removeDummyJob(Integer jobId, Integer customerId, HttpServletRequest request);
 
     ResponseEntity<?> pointWiseJobs(PointJobs pointJobs, HttpServletRequest request);
+
+    void deleteExpiredDummyJobs();
 }

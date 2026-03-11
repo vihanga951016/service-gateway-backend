@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ public class JobServiceHelper {
                     .job(job)
                     .startTime(startTime) //start time is the end time of last job
                     .endTime(calculatedEndTime)
+                    .createdDate(LocalDate.now())
+                    .createdTime(LocalTime.now())
                     .status(JobStatus.PENDING)
                     .dummyEntity(dummy)
                     .build();

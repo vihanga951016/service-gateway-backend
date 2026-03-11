@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -45,6 +46,12 @@ public class JobAtPoint {
     @JsonFormat(pattern = "HH:mm:ss")
     @Column(nullable = false)
     private LocalTime endTime;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private LocalDate createdDate;
+    @JsonFormat(pattern = "HH:mm:ss")
+    @Column(nullable = false)
+    private LocalTime createdTime;
 
     private int status;
 
