@@ -65,6 +65,92 @@ public class JobServiceHelper {
 
     }
 
+    public JobAtPoint createJobAtPoint(ServicePoint servicePoint,
+                                       Service service,
+                                       Job job,
+                                       LocalTime startTime,
+                                       ServicePoint minimumEndTimePoint,
+                                       LocalTime minimumEndTimeAtPoint,
+                                       boolean dummy) {
+        // calculate end time
+        // todo: some times we have to add a rest time for this
+        LocalTime calculatedEndTime = calculateEndTime(startTime, service.getServiceTime(), servicePoint.getCloseTime());
+
+        if (calculatedEndTime != null) {
+            //create and add job at point
+            return JobAtPoint.builder()
+                    .servicePoint(servicePoint)
+                    .service(service)
+                    .job(job)
+                    .startTime(startTime) //start time is the end time of last job
+                    .endTime(calculatedEndTime)
+                    .createdDate(LocalDate.now())
+                    .createdTime(LocalTime.now())
+                    .status(JobStatus.PENDING)
+                    .dummyEntity(dummy)
+                    .build();
+        } else {
+            // no slot found in this day
+
+            // but there is a point which has minimum end time. try this
+            if(minimumEndTimePoint != null) {
+                List<JobAtPoint> createdJobsSoFar = jobAtPointRepository
+                        .findByServicePointAndJobIdAndAppointmentDate(
+                                servicePoint.getId(),
+                                job.getId(),
+                                job.getAppointmentDate()
+                        );
+
+                if (createdJobsSoFar.isEmpty()) return null;
+
+                List<JobAtPoint> rescheduledJobs = new ArrayList<>();
+
+                LocalTime newStartTime = minimumEndTimeAtPoint;
+
+                for (JobAtPoint createdJob : createdJobsSoFar) {
+                    if (createdJob.getServicePoint().getId().equals(servicePoint.getId())) {
+                        LocalTime newEndTime = calculateEndTime(newStartTime,
+                                createdJob.getService().getServiceTime(), createdJob.getServicePoint().getCloseTime());
+
+                        if (newEndTime == null) return null;
+
+                        createdJob.setServicePoint(minimumEndTimePoint);
+                        createdJob.setStartTime(newStartTime);
+                        createdJob.setEndTime(newEndTime);
+
+                        rescheduledJobs.add(createdJob);
+
+                        newStartTime = newEndTime;
+                    }
+                }
+
+                jobAtPointRepository.saveAll(rescheduledJobs);
+
+                LocalTime calculatedEndTimeForNext =
+                        calculateEndTime(newStartTime, service.getServiceTime(), servicePoint.getCloseTime());
+
+                if (calculatedEndTimeForNext != null) {
+                    return JobAtPoint.builder()
+                            .servicePoint(minimumEndTimePoint)
+                            .service(service)
+                            .job(job)
+                            .startTime(newStartTime)
+                            .endTime(calculatedEndTimeForNext)
+                            .createdDate(LocalDate.now())
+                            .createdTime(LocalTime.now())
+                            .status(JobStatus.PENDING)
+                            .dummyEntity(dummy)
+                            .build();
+                } else {
+                    return null;
+                }
+
+            } else {
+                return null;
+            }
+        }
+    }
+
     public LocalTime calculateEndTime(LocalTime startTime, LocalTime serviceTime, LocalTime closeTime) {
 
         LocalTime endTime = startTime
@@ -163,6 +249,14 @@ public class JobServiceHelper {
 
         // no free slots
         return null;
+    }
+
+    public String jobType(int jobType) {
+        if (jobType == 1) {
+            return "WEB";
+        }
+
+        return "UNDEFINED";
     }
 
 }

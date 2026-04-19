@@ -21,6 +21,7 @@ public class JobsSchedule {
     private String status;
     private Integer totalTime;
     private String fromTo;
+    private boolean verified;
     private boolean freeSlot;
     private boolean ignoreThis;
 }

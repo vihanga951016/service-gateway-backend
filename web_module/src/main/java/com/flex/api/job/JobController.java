@@ -29,10 +29,22 @@ public class JobController {
         return jobService.prepareJob(job, request);
     }
 
+    @PutMapping("/{jobId}/verify")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PV)")
+    public ResponseEntity<?> verifyJob(@PathVariable Integer jobId, HttpServletRequest request) {
+        return jobService.jobVerification(jobId, request);
+    }
+
     @DeleteMapping("/{jobId}/remove/customer/{customerId}")
     @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
     public ResponseEntity<?> cancelPrepare(@PathVariable Integer jobId, @PathVariable Integer customerId, HttpServletRequest request) {
         return jobService.removeDummyJob(jobId, customerId, request);
+    }
+
+    @GetMapping("/{id}/details")
+    @PreAuthorize("@securityService.hasAnyAccess(T(com.flex.user_module.constants.PermissionConstant).PT)")
+    public ResponseEntity<?> jobDetails(@PathVariable Integer id, HttpServletRequest request) {
+        return jobService.jobDetails(id, request);
     }
 
     @PostMapping("/schedule")

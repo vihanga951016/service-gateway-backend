@@ -34,6 +34,9 @@ public class Job {
     @ManyToOne
     @JoinColumn(name = "customer_id")
     private Customer customer;
+    @ManyToOne
+    @JoinColumn(name = "service_center_id")
+    private ServiceCenter serviceCenter;
 
     // times
     @JsonFormat(pattern = "HH:mm:ss")
@@ -43,8 +46,16 @@ public class Job {
     private LocalDate appointmentDate;
     @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime appointmentTime;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate createdDate;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime createdTime;
+    @Column(length = 1000)
+    private String description;
     private Integer totalPrice;
     private Integer downPayment;
+    private Integer clusterId;
+    private int jobType;
 
     private int status;
     private boolean dummy;

@@ -16,6 +16,8 @@ import java.util.Optional;
 
 public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer> {
 
+    List<JobAtPoint> findAllByJobId(Integer jobId);
+
     @Query("SELECT j.id FROM JobAtPoint j WHERE j.createdDate=:date AND j.dummyEntity = true")
     List<Integer> getDummyJobIds(@Param("date") LocalDate date);
 
@@ -29,6 +31,28 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
     List<JobAtPoint> getPendingJobsAtPointByPoint(@Param("servicePointId") Integer servicePointId,
                                                  @Param("appointmentDate") LocalDate appointmentDate);
 
+//    @Query("""
+//       SELECT j
+//       FROM JobAtPoint j
+//       LEFT JOIN j.job js
+//       WHERE js.id = :id
+//         AND js.appointmentDate = :date
+//       ORDER BY j.startTime ASC
+//       """)
+//    List<JobAtPoint> findByJobIdAndAppointmentDate(
+//            @Param("id") Integer job,
+//            @Param("date") LocalDate appointmentDate
+//    );
+
+    @Query("SELECT j FROM JobAtPoint j " +
+            "WHERE j.servicePoint.id=:point " +
+            "and j.job.id=:id " +
+            "ORDER BY j.startTime ASC")
+    List<JobAtPoint> findByServicePointAndJobIdAndAppointmentDate(
+            @Param("point") Integer point,
+            @Param("id") Integer job,
+            @Param("date") LocalDate appointmentDate);
+
     @Query("""
        SELECT j
        FROM JobAtPoint j
@@ -37,7 +61,7 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
          AND js.appointmentDate = :date
        ORDER BY j.startTime ASC
        """)
-    List<JobAtPoint> findByJobIdAndAppointmentDate(
+    List<JobAtPoint> findByServicePointIdAndAppointmentDate(
             @Param("id") Integer servicePointId,
             @Param("date") LocalDate appointmentDate
     );
@@ -63,6 +87,7 @@ public interface JobAtPointRepository extends JpaRepository<JobAtPoint, Integer>
 
     @Query(value = """
         SELECT jp.id AS jobAtPointId,
+               j.payment_verified as verified,
             j.id AS jobId,
             c.customer AS customerName,
             s.name AS serviceName,

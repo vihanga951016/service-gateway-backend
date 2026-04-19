@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param;
 public interface JobRepository extends JpaRepository<Job, Integer> {
     Job findByIdAndDummyIsTrue(Integer id);
 
+    Job getJobById(Integer id);
+
     @Query("SELECT j FROM Job j WHERE j.customer.id=:id AND j.status < 2")
     Job jobForCustomer(@Param("id") Integer customerId);
+
 }

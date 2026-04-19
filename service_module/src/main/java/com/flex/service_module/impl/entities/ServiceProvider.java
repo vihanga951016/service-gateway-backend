@@ -33,6 +33,7 @@ public class ServiceProvider {
     @Column(columnDefinition = "TIMESTAMP default CURRENT_TIMESTAMP")
     private Date addedTime;
     private String description;
+    private Integer serviceFee;
     private boolean active;
     private boolean hasMultipleCenters;
     private boolean restricted;

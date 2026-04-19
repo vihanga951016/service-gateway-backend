@@ -9,9 +9,13 @@ public interface JobService {
 
     ResponseEntity<?> prepareJob(PrepareJob prepareJob, HttpServletRequest request);
 
+    ResponseEntity<?> jobVerification(Integer id, HttpServletRequest request);
+
     ResponseEntity<?> removeDummyJob(Integer jobId, Integer customerId, HttpServletRequest request);
 
     ResponseEntity<?> pointWiseJobs(PointJobs pointJobs, HttpServletRequest request);
+
+    ResponseEntity<?> jobDetails(Integer jobId, HttpServletRequest request);
 
     void deleteExpiredDummyJobs();
 }

@@ -46,6 +46,8 @@ public class JobAtPoint {
     @JsonFormat(pattern = "HH:mm:ss")
     @Column(nullable = false)
     private LocalTime endTime;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime actualEndTime;
     @JsonFormat(pattern = "yyyy-MM-dd")
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private LocalDate createdDate;

@@ -3,6 +3,7 @@ package com.flex.user_module.constants;
 public class PermissionConstant {
 
     public static final String PT = "Permit This";
+    public static final String PV = "Payments Verifier";
     public static final String RM = "Role Management";
     public static final String UM = "User Management";
     public static final String DD = "Decrypt Data";
