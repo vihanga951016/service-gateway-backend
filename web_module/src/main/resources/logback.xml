@@ -1,15 +1,32 @@
 <configuration>
 
-    <!-- Console appender -->
+    <property name="LOG_PATH" value="/opt/tomcat/logs"/>
+
+    <!-- Console -->
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>SERVICE GATEWAY %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- Set the root logger level and appender -->
+    <!-- File logging -->
+    <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/service-gateway.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/service-gateway.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger -->
     <root level="INFO">
-        <appender-ref ref="console" />
+        <appender-ref ref="console"/>
+        <appender-ref ref="file"/>
     </root>
 
 </configuration>

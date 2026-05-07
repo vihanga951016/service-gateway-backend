@@ -12,7 +12,7 @@
     <artifactId>web_module</artifactId>
     <version>1.0.0</version>
     <name>web_module</name>
-
+    <packaging>war</packaging>
     <build>
         <finalName>service-gateway</finalName>
     </build>
